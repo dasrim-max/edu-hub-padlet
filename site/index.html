@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko" data-app-style="B1">
+<html lang="ko">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -8,9 +8,7 @@
   <!-- 교사 화면 색상(팔레트)을 CSS 보다 먼저 -->
   <script src="/shared/ui/js/theme.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard-dynamic-subset.css">
-  <!-- 앱 스타일(B1~B6)에 쓰이는 글꼴 -->
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Gowun+Dodum&family=Hi+Melody&family=Jua&display=swap">
-  <!-- 순서: shared/design.js 와 같아요. 앱 스타일(app-styles)이 skin-apple 뒤에 와야 앱 스타일 번호가 이겨요 -->
+    <!-- 순서: shared/design.js 와 같아요. 앱 스타일(app-styles)이 skin-apple 뒤에 와야 앱 스타일 번호가 이겨요 -->
   <link rel="stylesheet" href="/shared/ui/css/tokens.css">
   <link rel="stylesheet" href="/shared/ui/css/components.css">
   <link rel="stylesheet" href="/shared/ui/css/fonts.css">
@@ -21,7 +19,7 @@
   <!-- 시안 확인용: 배포 전에 지워요 -->
   <link rel="stylesheet" href="css/demo.css">
 </head>
-<!-- 모아보드: 교사(보드 목록·보드) / 학생(?as=student&c=…). 관리자 앱 등록 표의 스타일 번호가 <html data-app-style> 에 들어가요(시안은 B1) -->
+<!-- 모아보드: 교사(보드 목록·보드) / 학생(?as=student&c=…). 기본은 애플 스타일. 관리자 앱 등록 표에 스타일 번호를 넣으면 initHub·initStudent 가 <html data-app-style> 로 넣어요 -->
 <body class="ss-appwin mb-body">
 
   <!-- 시안 확인용: 배포 전에 지워요 -->

@@ -1,5 +1,5 @@
 // 팝업: 보드 만들기·설정, 글쓰기·고치기, 글 자세히 보기(댓글)
-import { h, put, fill, modal, icon, LAYOUTS, STYLES, LIMITS, EMOJIS, checkFile, fileSize, timeAgo, confirmBox, toast } from "./common.js";
+import { h, put, fill, modal, icon, LAYOUTS, LIMITS, EMOJIS, checkFile, fileSize, timeAgo, confirmBox, toast } from "./common.js";
 
 // ---------------------------------------------------------------------------
 // 보드 만들기 / 보드 설정
@@ -13,7 +13,7 @@ const PERMS = [
   ["allow_files", "사진·파일 올리기", "사진 10MB, 파일 20MB까지"],
   ["show_names", "친구 이름 보이기", "끄면 학생 화면에는 이름 없이 보여요(선생님은 늘 보여요)"],
 ];
-export const BOARD_DEFAULTS = { layout: "wall", style: "", needs_approval: false, allow_post: true, allow_comments: true,
+export const BOARD_DEFAULTS = { layout: "wall", needs_approval: false, allow_post: true, allow_comments: true,
   allow_like: true, allow_emoji: true, allow_files: true, show_names: true };
 
 /** onSave(values) 가 오류 문구를 돌려주면 창에 보여 줘요. onDelete 가 있으면 "보드 지우기" 버튼 */
@@ -32,8 +32,6 @@ export function openBoardDialog({ board = null, onSave, onDelete }) {
 
   const layoutPick = radioCards("mb-layout", LAYOUTS, v.layout, (val) =>
     h("span", { class: `mb-mini mb-mini--${val}`, "aria-hidden": "true" }, Array.from({ length: 6 }, () => h("i"))));
-  const stylePick = radioCards("mb-style", STYLES, v.style || "", (val) =>
-    h("span", { class: "mb-swatch", "data-app-style": val || null, "aria-hidden": "true" }, h("i"), h("i"), h("i")));
 
   const perm = Object.fromEntries(PERMS.map(([k]) => [k, h("input", { type: "checkbox", checked: !!v[k] })]));
   const permList = h("div", { class: "mb-perms" }, PERMS.map(([k, label, sub]) =>
@@ -46,7 +44,6 @@ export function openBoardDialog({ board = null, onSave, onDelete }) {
     h("div", { class: "mb-field" }, h("label", { class: "ss-label", for: "mb-b-title", text: "보드 이름" }), title),
     h("div", { class: "mb-field" }, h("label", { class: "ss-label", for: "mb-b-desc", text: "안내" }), desc),
     h("fieldset", { class: "mb-field" }, h("legend", { class: "ss-label", text: "배치" }), layoutPick),
-    h("fieldset", { class: "mb-field" }, h("legend", { class: "ss-label", text: "꾸미기" }), stylePick),
     h("fieldset", { class: "mb-field" }, h("legend", { class: "ss-label", text: "학생이 할 수 있는 것" }), permList));
 
   const save = h("button", { class: "ss-btn ss-btn--main", type: "button", text: board ? "저장" : "만들기" });
@@ -55,7 +52,6 @@ export function openBoardDialog({ board = null, onSave, onDelete }) {
     if (!t) { err.textContent = "보드 이름을 적어 주세요."; err.hidden = false; title.focus(); return; }
     const values = { title: t, description: desc.value.trim(),
       layout: m.body.querySelector('input[name="mb-layout"]:checked').value,
-      style: m.body.querySelector('input[name="mb-style"]:checked').value,
       ...Object.fromEntries(PERMS.map(([k]) => [k, perm[k].checked])) };
     save.disabled = true; save.textContent = board ? "저장하는 중…" : "만드는 중…";
     const bad = await onSave(values);

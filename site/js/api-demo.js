@@ -10,11 +10,11 @@ const uid = () => `00000000-0000-4000-8000-${String(++seq).padStart(12, "0")}`;
 // ---- 예시 데이터 ----
 const STUDENTS = ["김민준A", "이서연", "박지호", "최하윤", "정우진", "한도윤", "윤지아", "강시우"];
 const boards = [
-  { id: "00000000-0000-4000-8000-000000000001", title: "우리 반 환경 캠페인", description: "캠페인 아이디어를 하나씩 붙여 주세요.", layout: "column", style: "B1",
+  { id: "00000000-0000-4000-8000-000000000001", title: "우리 반 환경 캠페인", description: "캠페인 아이디어를 하나씩 붙여 주세요.", layout: "column",
     needs_approval: true, allow_post: true, allow_comments: true, allow_like: true, allow_emoji: true, allow_files: true, show_names: true, updated_at: ago(3) },
-  { id: "00000000-0000-4000-8000-000000000002", title: "오늘 배운 것 한 줄", description: "", layout: "wall", style: "B4",
+  { id: "00000000-0000-4000-8000-000000000002", title: "오늘 배운 것 한 줄", description: "", layout: "wall",
     needs_approval: false, allow_post: true, allow_comments: true, allow_like: true, allow_emoji: false, allow_files: false, show_names: false, updated_at: ago(60 * 26) },
-  { id: "00000000-0000-4000-8000-000000000003", title: "과학 실험 보고서 모음", description: "모둠별로 사진과 보고서 파일을 올려요.", layout: "grid", style: "B5",
+  { id: "00000000-0000-4000-8000-000000000003", title: "과학 실험 보고서 모음", description: "모둠별로 사진과 보고서 파일을 올려요.", layout: "grid",
     needs_approval: false, allow_post: true, allow_comments: false, allow_like: true, allow_emoji: true, allow_files: true, show_names: true, updated_at: ago(60 * 24 * 6) },
 ];
 const sections = [

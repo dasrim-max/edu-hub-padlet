@@ -34,13 +34,6 @@ export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInv
   }
   if (!(await load())) return;
 
-  // 보드 꾸미기: 보드가 고른 스타일, 없으면 관리자가 정한 앱 스타일(<html data-app-style>)
-  const adminStyle = document.documentElement.getAttribute("data-app-style") || "";
-  const applyStyle = () => {
-    const s = data.board.style || adminStyle;
-    if (s) document.documentElement.setAttribute("data-app-style", s); else document.documentElement.removeAttribute("data-app-style");
-  };
-  applyStyle();
   onTitle?.(data.board.title);
 
   // ---- 교사 앱 메뉴 ----
@@ -266,7 +259,6 @@ export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInv
   function draw() {
     if (dragging) { dirty = true; return; }   // 끄는 중에는 다시 그리지 않아요(끝나면 그려요)
     const b = data.board;
-    applyStyle();
     onTitle?.(b.title);
     const all = data.posts.filter((p) => teacher || p.status === "visible" || p.mine);
     const pendingN = data.posts.filter((p) => p.status === "pending").length;
