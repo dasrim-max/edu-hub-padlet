@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ko" data-app-style="B1">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <title>모아보드</title>
+  <!-- 교사 화면 색상(팔레트)을 CSS 보다 먼저 -->
+  <script src="/shared/ui/js/theme.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard-dynamic-subset.css">
+  <!-- 앱 스타일(B1~B6)에 쓰이는 글꼴 -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Gowun+Dodum&family=Hi+Melody&family=Jua&display=swap">
+  <!-- 순서: shared/design.js 와 같아요. 앱 스타일(app-styles)이 skin-apple 뒤에 와야 앱 스타일 번호가 이겨요 -->
+  <link rel="stylesheet" href="/shared/ui/css/tokens.css">
+  <link rel="stylesheet" href="/shared/ui/css/components.css">
+  <link rel="stylesheet" href="/shared/ui/css/fonts.css">
+  <link rel="stylesheet" href="/shared/ui/css/skin-apple.css">
+  <link rel="stylesheet" href="/shared/ui/css/app-styles.css">
+  <link rel="stylesheet" href="/shared/ui/css/app-window.css">
+  <link rel="stylesheet" href="css/moaboard.css">
+  <!-- 시안 확인용: 배포 전에 지워요 -->
+  <link rel="stylesheet" href="css/demo.css">
+</head>
+<!-- 모아보드: 교사(보드 목록·보드) / 학생(?as=student&c=…). 관리자 앱 등록 표의 스타일 번호가 <html data-app-style> 에 들어가요(시안은 B1) -->
+<body class="ss-appwin mb-body">
+
+  <!-- 시안 확인용: 배포 전에 지워요 -->
+  <nav class="mb-demo" data-demo aria-label="시안 확인용 화면 고르기">
+    <b>시안 확인용</b>
+    <a href="./">교사 · 보드 목록</a>
+    <a href="./?mode=new">새 보드</a>
+    <a href="./?c=00000000-0000-4000-8000-000000000001">보드(칸)</a>
+    <a href="./?c=00000000-0000-4000-8000-000000000002">보드(담벼락)</a>
+    <a href="./?c=00000000-0000-4000-8000-000000000003">보드(묶음)</a>
+    <a href="./?as=student&amp;c=00000000-0000-4000-8000-000000000001">학생 화면</a>
+    <span>상태:</span>
+    <a href="./?state=empty">빈 목록</a>
+    <a href="./?state=loading">불러오는 중</a>
+    <a href="./?state=error">오류</a>
+    <a href="./?reset=1">예시 처음으로</a>
+  </nav>
+
+  <div id="bar"></div>
+  <main class="mb-app" id="app" aria-live="polite"></main>
+
+  <!-- 시안 확인용 학생 초대 창. 개발 시: hub.openInvite({ appSlug, contentId, title }) 가 같은 창을 그려요 -->
+  <div class="ss-scrim" id="mb-invite" hidden role="dialog" aria-modal="true" aria-labelledby="mb-invite-title">
+    <div class="ss-modal ss-modal--wide">
+      <div class="ss-modal__head"><h2 id="mb-invite-title">학생 초대</h2><span class="ss-badge ss-badge--on">사용 중</span></div>
+      <div class="ss-modal__body">
+        <div class="ss-invite">
+          <div class="ss-invite__main">
+            <div><label class="ss-label" for="mb-invite-link">입장 링크</label>
+              <div class="ss-invite__link"><input class="ss-input" id="mb-invite-link" readonly value="https://ssamhub.com/join.html#t=…"><button class="ss-btn ss-btn--yellow" type="button" data-ss-copy="#mb-invite-link" data-ss-label="복사">복사</button></div></div>
+            <div><span class="ss-label">참여 코드</span><div class="ss-code-big">B1C2D3</div>
+              <div class="ss-invite__coderow"><span class="ss-invite__hint">QR을 못 쓰는 기기는 코드로 들어와요.</span><button class="ss-btn ss-btn--sm" type="button">새로 만들기</button></div></div>
+          </div>
+          <svg class="ss-invite__qr" data-ss-fakeqr="moaboard" aria-label="입장 QR (자리 표시)" shape-rendering="crispEdges"></svg>
+        </div>
+      </div>
+      <div class="ss-modal__foot"><button class="ss-btn ss-btn--danger ss-modal__foot-start" type="button">링크 사용 중지</button><button class="ss-btn ss-btn--main" type="button" data-ss-close>닫기</button></div>
+    </div>
+  </div>
+
+  <script src="/shared/ui/js/ui.js"></script>
+  <script src="/shared/ui/js/idle.js"></script>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
