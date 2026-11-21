@@ -98,7 +98,7 @@ export function openCompose({ post = null, sections = [], sectionId = null, allo
   }
 
   // 사진·파일 (각각 하나)
-  let image = post?.image ? { url: post.image } : null, file = post?.file || null, busy = false;
+  let image = post?.image ? { url: post.image, path: post.image_path ?? null } : null, file = post?.file || null, busy = false;
   const attach = h("div", { class: "mb-attach" });
   const pickImg = h("input", { type: "file", accept: "image/png,image/jpeg,image/gif,image/webp", hidden: true });
   const pickFile = h("input", { type: "file", hidden: true });
@@ -114,10 +114,10 @@ export function openCompose({ post = null, sections = [], sectionId = null, allo
     if (bad) return say(bad);
     say(""); busy = true; send.disabled = true; send.textContent = "올리는 중…";
     try {
-      const up = await upload(f);
-      if (kind === "image") image = { url: up.url }; else file = { name: up.name, size: up.size, url: up.url };
+      const up = await upload(f, kind);
+      if (kind === "image") image = { url: up.url, path: up.path }; else file = { name: up.name, size: up.size, url: up.url, path: up.path };
       drawAttach();
-    } catch { say("올리지 못했어요. 인터넷 연결을 확인하고 다시 골라 주세요."); }
+    } catch (e) { say(e?.userMessage || "올리지 못했어요. 인터넷 연결을 확인하고 다시 골라 주세요."); }
     busy = false; send.disabled = false; send.textContent = post ? "고치기" : "붙이기";
   };
   pickImg.addEventListener("change", onPick("image"));
@@ -139,7 +139,7 @@ export function openCompose({ post = null, sections = [], sectionId = null, allo
   send.onclick = async () => {
     if (busy) return;
     const v = { title: title.value.trim(), body: body.value.trim(), section_id: sec ? sec.value : (post?.section_id ?? sectionId ?? null),
-      image: image?.url || null, file };
+      image: image?.url || null, image_path: image?.path ?? null, file };
     if (!v.title && !v.body && !v.image && !v.file) { say("제목이나 내용을 적어 주세요."); body.focus(); return; }
     send.disabled = true; send.textContent = "붙이는 중…";
     const bad = await onSubmit(v);

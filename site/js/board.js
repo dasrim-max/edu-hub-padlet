@@ -15,15 +15,20 @@ import { openSlideshow } from "./slideshow.js";
  */
 export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInvite, onDeleted, onTitle }) {
   const teacher = role === "teacher";
+  /** 저장이 안 되면 알림으로 알려요(서버가 준 문구가 있으면 그대로). 됐으면 true */
+  const guard = (p) => Promise.resolve(p).then(() => true, (e) => { console.error(e); toast(e?.userMessage || "저장하지 못했어요. 인터넷 연결을 확인하고 다시 해 주세요."); return false; });
   let data = null, query = "", onlyPending = false, stuSection = null, dragging = null, dirty = false;
 
   // 불러오는 중
   root.replaceChildren(h("div", { class: "mb-loading", "aria-busy": "true", "aria-label": "보드를 불러오는 중" },
     h("div", { class: "ss-skeleton mb-sk mb-sk--title" }), h("div", { class: "mb-sk-row" }, [1, 2, 3].map(() => h("div", { class: "ss-skeleton mb-sk mb-sk--card" })))));
 
-  async function load() {
-    try { data = await api.getBoard(boardId); }
-    catch { root.replaceChildren(errorBox("보드를 불러오지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.", load)); return false; }
+  /** quiet: 실시간·주기 다시 읽기. 잠깐 끊겨도 보던 화면을 그대로 둬요 */
+  async function load(quiet = false) {
+    let next;
+    try { next = await api.getBoard(boardId); }
+    catch (e) { if (quiet && data) return false; console.error(e); root.replaceChildren(errorBox(e?.userMessage || "보드를 불러오지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.", () => location.reload())); return false; }
+    data = next;
     if (!data) {
       root.replaceChildren(h("div", { class: "ss-empty mb-empty" }, h("b", { text: "보드를 찾지 못했어요" }),
         h("span", { text: teacher ? "지워졌거나 주소가 바뀌었어요. 보드 목록에서 다시 골라 주세요." : "선생님께 확인해 주세요." }),
@@ -45,8 +50,8 @@ export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInv
       openSlideshow({ posts: list, board: data.board, showName });
     });
     bar.addAction("보드 설정", () => openBoardDialog({ board: data.board,
-      onSave: async (v) => { try { await api.updateBoard(boardId, v); toast("저장했어요"); } catch { return "저장하지 못했어요. 다시 시도해 주세요."; } },
-      onDelete: async () => { await api.deleteBoard(boardId); onDeleted?.(); } }));
+      onSave: async (v) => { try { await api.updateBoard(boardId, v); toast("저장했어요"); } catch (e) { return e?.userMessage || "저장하지 못했어요. 다시 시도해 주세요."; } },
+      onDelete: async () => { if (await guard(api.deleteBoard(boardId))) onDeleted?.(); } }));
   }
 
   const head = h("header", { class: "mb-head" });
@@ -96,11 +101,11 @@ export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInv
       p.body && h("p", { class: "mb-card__body", text: p.body }),
       p.file && fileChip(p.file),
       pending && teacher && h("div", { class: "mb-card__approve" },
-        h("button", { class: "ss-btn ss-btn--sm ss-btn--main", type: "button", onclick: async (e) => { e.stopPropagation(); await api.approvePost(p.id); toast("친구들에게 보여요"); } }, icon("check"), " 보이기"),
+        h("button", { class: "ss-btn ss-btn--sm ss-btn--main", type: "button", onclick: async (e) => { e.stopPropagation(); if (await guard(api.approvePost(p.id))) toast("친구들에게 보여요"); } }, icon("check"), " 보이기"),
         h("button", { class: "ss-btn ss-btn--sm", type: "button", text: "지우기", onclick: (e) => { e.stopPropagation(); removePost(p); } })),
       h("footer", { class: "mb-card__foot" },
         h("span", { class: "mb-card__meta", text: [showName(p), timeAgo(p.created_at)].filter(Boolean).join(" · ") }),
-        !pending && reactionBar(p, data.board, { big, onLike: () => api.toggleLike(p.id), onEmoji: (em) => api.toggleEmoji(p.id, em) }),
+        !pending && reactionBar(p, data.board, { big, onLike: () => guard(api.toggleLike(p.id)), onEmoji: (em) => guard(api.toggleEmoji(p.id, em)) }),
         !pending && data.board.allow_comments && h("button", { class: "mb-react mb-react--cmt", type: "button", "aria-label": `댓글 ${p.comments.length}개 보기`, onclick: (e) => { e.stopPropagation(); detail(p.id); } },
           icon("chat"), h("span", { text: String(p.comments.length) }))));
     el.addEventListener("click", (e) => { if (!e.target.closest("a,button")) detail(p.id); });
@@ -114,10 +119,11 @@ export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInv
   }
 
   function detail(id) {
-    openPostDetail({ get: () => data.posts.find((x) => x.id === id), board: data.board, student: !teacher, showName, subscribe: api.subscribe,
+    openPostDetail({ get: () => data.posts.find((x) => x.id === id), board: data.board, student: !teacher, showName,
+      subscribe: (fn) => { afterLoad.add(fn); return () => afterLoad.delete(fn); },
       actions: {
-        addComment: async (t) => { try { await api.addComment(id, t, { asTeacher: teacher, author: me.name }); } catch { return "댓글을 쓰지 못했어요. 다시 해 주세요."; } },
-        deleteComment: (cid) => api.deleteComment(id, cid),
+        addComment: async (t) => { try { await api.addComment(id, t, { asTeacher: teacher, author: me.name }); } catch (e) { return e?.userMessage || "댓글을 쓰지 못했어요. 다시 해 주세요."; } },
+        deleteComment: (cid) => guard(api.deleteComment(id, cid)),
         canDelete: (c) => teacher || c.mine,
       } });
   }
@@ -140,7 +146,7 @@ export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInv
   async function removePost(p) {
     const ok = await confirmBox({ title: "글을 지울까요?", text: "글과 댓글, 붙인 사진·파일이 함께 지워져요." });
     if (!ok) return;
-    await api.deletePost(p.id); toast("글을 지웠어요");
+    if (await guard(api.deletePost(p.id))) toast("글을 지웠어요");
   }
   function moveDialog(p) {
     const m = modal({ title: "다른 칸으로 옮기기", cls: "mb-dlg" });
@@ -153,7 +159,7 @@ export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInv
     m.foot.append(h("button", { class: "ss-btn", type: "button", text: "취소", onclick: () => m.close() }),
       h("button", { class: "ss-btn ss-btn--main", type: "button", text: "옮기기", onclick: async () => {
         const first = inSection(sel.value).find((x) => x.id !== p.id);
-        await api.movePost(p.id, sel.value, where.value === "start" ? first?.id : null); m.close();
+        await guard(api.movePost(p.id, sel.value, where.value === "start" ? first?.id : null)); m.close();
       } }));
     m.focus();
   }
@@ -168,7 +174,7 @@ export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInv
         try {
           if (post) await api.updatePost(post.id, v);
           else await api.createPost(boardId, v, { asTeacher: teacher, needsApproval: b.needs_approval, author: me.name });
-        } catch { return "붙이지 못했어요. 인터넷 연결을 확인하고 다시 해 주세요."; }
+        } catch (e) { return e?.userMessage || "붙이지 못했어요. 인터넷 연결을 확인하고 다시 해 주세요."; }
         if (!post) toast(!teacher && b.needs_approval ? "붙였어요. 선생님이 확인하면 보여요" : "붙였어요");
         if (!teacher && v.section_id) stuSection = v.section_id;
       } });
@@ -190,7 +196,7 @@ export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInv
       e.preventDefault();
       const id = dragging, before = marker?.nextElementSibling?.dataset?.id || null;
       clearMarker();
-      if (id) { dirty = false; await api.movePost(id, sid, before === id ? null : before); }
+      if (id) { dirty = false; await guard(api.movePost(id, sid, before === id ? null : before)); }
     });
   }
   /** 마우스 위치 바로 뒤에 오는 카드(읽는 순서: 위→아래, 같은 줄이면 왼→오) */
@@ -211,13 +217,13 @@ export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInv
     const item = (label, fn, danger, disabled) => h("button", { type: "button", role: "menuitem", class: danger ? "is-danger" : "", disabled, text: label, onclick: (e) => { e.stopPropagation(); closeMenu(); fn(); } });
     const across = data.board.layout === "column";
     menuEl = h("div", { class: "mb-menu", role: "menu" },
-      item("이름 바꾸기", () => nameDialog({ title: "칸 이름 바꾸기", value: s.title, ok: "바꾸기", onOk: (t) => api.renameSection(s.id, t) })),
-      item(across ? "왼쪽으로" : "위로", () => api.moveSection(s.id, -1), false, i === 0),
-      item(across ? "오른쪽으로" : "아래로", () => api.moveSection(s.id, 1), false, i === list.length - 1),
+      item("이름 바꾸기", () => nameDialog({ title: "칸 이름 바꾸기", value: s.title, ok: "바꾸기", onOk: (t) => guard(api.renameSection(s.id, t)) })),
+      item(across ? "왼쪽으로" : "위로", () => guard(api.moveSection(s.id, -1)), false, i === 0),
+      item(across ? "오른쪽으로" : "아래로", () => guard(api.moveSection(s.id, 1)), false, i === list.length - 1),
       item("칸 지우기", async () => {
         const n = data.posts.filter((p) => p.section_id === s.id).length;
         const ok = await confirmBox({ title: "칸을 지울까요?", text: n ? `'${s.title}' 칸의 글 ${n}개는 지우지 않고 '칸 없음'으로 옮겨요.` : `'${s.title}' 칸을 지워요.` });
-        if (ok) api.deleteSection(s.id);
+        if (ok) guard(api.deleteSection(s.id));
       }, true));
     anchor.after(menuEl);
     menuEl.querySelector("button")?.focus();
@@ -237,7 +243,7 @@ export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInv
     m.focus(); input.select();
   }
   const addSectionBtn = () => teacher && sections().length < LIMITS.sections && h("button", { class: "mb-addsec", type: "button",
-    onclick: () => nameDialog({ title: "칸 추가", value: `칸 ${sections().length + 1}`, ok: "추가", onOk: (t) => api.addSection(boardId, t) }) }, icon("plus"), h("span", { text: "칸 추가" }));
+    onclick: () => nameDialog({ title: "칸 추가", value: `칸 ${sections().length + 1}`, ok: "추가", onOk: (t) => guard(api.addSection(boardId, t)) }) }, icon("plus"), h("span", { text: "칸 추가" }));
 
   function sectionBlock(s, cls) {
     const sid = s?.id ?? null;
@@ -329,6 +335,8 @@ export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInv
   }
 
   // 실시간 반영(개발 시: 교사는 Supabase Realtime, 학생은 5초마다 다시 읽기)
-  api.subscribe(async () => { if (await load()) { root.replaceChildren(head, stage, fab); draw(); } });
+  // 글 보기 창은 보드를 다시 읽은 뒤에 다시 그려요
+  const afterLoad = new Set();
+  api.subscribe(async () => { if (await load(true)) { root.replaceChildren(head, stage, fab); draw(); afterLoad.forEach((fn) => fn()); } });
   draw();
 }
