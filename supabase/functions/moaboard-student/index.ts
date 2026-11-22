@@ -14,7 +14,7 @@ import { studentRequest } from "../_shared/student-app.ts";
 import { APP_ENTRY_ID, BUCKET, LIMITS, REACTIONS, checkPost, clean, isUuid, shapeBoard, uploadPath, type Board, type PostRow } from "./logic.ts";
 
 const SLUG = "moaboard";
-const BOARD_COLS = "id, teacher_id, title, description, layout, needs_approval, allow_post, allow_comments, allow_like, allow_emoji, allow_files, show_names, bg_preset, bg_image_path, card_color, updated_at";
+const BOARD_COLS = "id, teacher_id, title, description, layout, needs_approval, allow_post, allow_comments, allow_like, allow_emoji, allow_files, show_names, comments_inline, bg_preset, bg_image_path, card_color, updated_at";
 const POST_COLS = "id, board_id, section_id, position, student_id, by_teacher, author_name, title, body, image_path, file_path, file_name, file_size, status, created_at, " +
   "moaboard_comments(id, student_id, by_teacher, author_name, body, created_at), moaboard_reactions(actor_id, kind)";
 const ACTIONS = ["boards", "board", "post", "edit", "delete", "comment", "uncomment", "react", "upload_url"];

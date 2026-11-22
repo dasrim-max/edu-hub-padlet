@@ -68,6 +68,8 @@ test("보드 꾸미기: 무늬·카드 색 이름과 배경 사진 주소를 보
   assert.equal(out.board.card_color, "pink");
   assert.equal(out.board.bg_image, "https://signed/bg");
   assert.equal("bg_image_path" in out.board, false);
+  assert.equal(out.board.comments_inline, true, "값이 없으면 켜짐");
+  assert.equal(shapeBoard(board({ comments_inline: false }), [], [], ME, new Map()).board.comments_inline, false);
 });
 
 test("담벼락이면 칸을 보내지 않고, 이름 보이기면 친구 이름이 보인다", () => {
