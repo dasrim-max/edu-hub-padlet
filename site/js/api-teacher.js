@@ -3,10 +3,10 @@
 import { SLUG, fileExt } from "./common.js";
 
 const BUCKET = "moaboard-files";
-const BOARD_COLS = "id, title, description, layout, needs_approval, allow_post, allow_comments, allow_like, allow_emoji, allow_files, show_names, created_at, updated_at";
+const BOARD_COLS = "id, title, description, layout, needs_approval, allow_post, allow_comments, allow_like, allow_emoji, allow_files, show_names, bg_preset, bg_image_path, card_color, created_at, updated_at";
 const POST_COLS = "id, board_id, section_id, position, student_id, by_teacher, author_name, title, body, image_path, file_path, file_name, file_size, status, created_at, " +
   "moaboard_comments(id, by_teacher, author_name, body, created_at), moaboard_reactions(actor_id, kind)";
-const EDITABLE = ["title", "description", "layout", "needs_approval", "allow_post", "allow_comments", "allow_like", "allow_emoji", "allow_files", "show_names"];
+const EDITABLE = ["title", "description", "layout", "needs_approval", "allow_post", "allow_comments", "allow_like", "allow_emoji", "allow_files", "show_names", "bg_preset", "bg_image_path", "card_color"];
 const pick = (o, keys) => Object.fromEntries(keys.filter((k) => k in o).map((k) => [k, o[k]]));
 const must = ({ data, error }) => { if (error) throw error; return data; };
 
@@ -42,7 +42,8 @@ export function createTeacherApi(hub) {
         sb.rpc("moaboard_board_counts").then(must),
       ]);
       const by = new Map((counts ?? []).map((c) => [c.board_id, c]));
-      return boards.map((b) => ({ ...b, post_count: Number(by.get(b.id)?.post_count ?? 0), pending_count: Number(by.get(b.id)?.pending_count ?? 0) }));
+      const url = await signed(boards.map((b) => b.bg_image_path));
+      return boards.map((b) => ({ ...b, bg_image: url(b.bg_image_path), post_count: Number(by.get(b.id)?.post_count ?? 0), pending_count: Number(by.get(b.id)?.pending_count ?? 0) }));
     },
     async getBoard(id) {
       const first = current !== id;
@@ -53,7 +54,8 @@ export function createTeacherApi(hub) {
         sb.from("moaboard_sections").select("id, board_id, title, position").eq("board_id", id).order("position").then(must),
         sb.from("moaboard_posts").select(POST_COLS).eq("board_id", id).order("created_at").limit(1000).then(must),
       ]);
-      const url = await signed(rows.flatMap((p) => [p.image_path, p.file_path]));
+      const url = await signed([board.bg_image_path, ...rows.flatMap((p) => [p.image_path, p.file_path])]);
+      board.bg_image = url(board.bg_image_path);
       const posts = rows.map((p) => {
         const rx = p.moaboard_reactions ?? [], emojis = {};
         for (const r of rx) if (r.kind !== "like") emojis[r.kind] = (emojis[r.kind] || 0) + 1;
@@ -79,7 +81,9 @@ export function createTeacherApi(hub) {
       return b;
     },
     async updateBoard(id, v) {
+      const oldBg = last?.board?.id === id ? last.board.bg_image_path : null;
       const b = must(await sb.from("moaboard_boards").update(pick(v, EDITABLE)).eq("id", id).select(BOARD_COLS).single());
+      if (oldBg && oldBg !== b.bg_image_path) await removeFiles([oldBg]);   // 바꾸거나 뺀 배경 사진은 지워요
       if (b.layout !== "wall" && !(last?.sections?.length)) must(await sb.from("moaboard_sections").insert({ board_id: id, title: "첫 번째 칸", position: 0 }));
       await record(b);
       changed();
@@ -88,7 +92,8 @@ export function createTeacherApi(hub) {
     async deleteBoard(id) {
       // 파일 먼저(행이 지워지면 경로를 알 수 없어요)
       const rows = must(await sb.from("moaboard_posts").select("image_path, file_path").eq("board_id", id));
-      await removeFiles(rows.flatMap((p) => [p.image_path, p.file_path]));
+      const bg = must(await sb.from("moaboard_boards").select("bg_image_path").eq("id", id).maybeSingle());
+      await removeFiles([bg?.bg_image_path, ...rows.flatMap((p) => [p.image_path, p.file_path])]);
       must(await sb.from("moaboard_boards").delete().eq("id", id));
       await hub.removeActivity({ appSlug: SLUG, contentId: id });
     },

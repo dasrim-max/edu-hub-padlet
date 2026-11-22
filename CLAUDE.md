@@ -2,6 +2,7 @@
 
 - 쌤허브 앱이다. 화면·디자인·공통 모듈 규칙은 포털 저장소(dasrim-max/edu-hub)의 `CLAUDE.md` 와 `packages/shared/ui/DESIGN.md` 를 따른다.
 - 앱 기본 디자인은 애플 스타일(관리자 앱 등록 표의 스타일 번호 비움). 앱 CSS 는 `--as-*` 변수만 쓴다.
+- 예외: 보드 꾸미기(배경 무늬·색 41가지, 배경 사진, 카드 색 10가지)는 교사가 고르는 "내용"이라 원본 학급패들렛의 색을 그대로 쓴다. 색 값은 `site/css/moaboard-style.css` 와 목록 `site/js/board-style.js` 에만 두고, DB 에는 이름(id)만 저장한다. 다른 CSS 에는 새 색을 넣지 않는다.
 - 사이트로 나가는 것은 `site/` 뿐이다. `preview/` 는 예시 데이터 시안이라 배포하지 않는다.
 - 교사·학생이 입력한 글은 `textContent` 로만 넣는다.
 - DB 변경은 `supabase/migrations/` 에 쓰고, `supabase/tests/moaboard_rls_test.sql` 로 권한을 확인한다. `apps` 표에 등록할 때는 켜진 상태로 넣는다.

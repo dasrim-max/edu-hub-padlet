@@ -61,6 +61,15 @@ test("학생에게 보낼 보드: 확인 전 글은 내 것만, 이름 숨기기
   assert.equal(c.image_path, null, "친구 파일 경로는 보내지 않음");
 });
 
+test("보드 꾸미기: 무늬·카드 색 이름과 배경 사진 주소를 보내고, 경로는 보내지 않는다", () => {
+  const bgPath = `${T}/${B}/t/${R}.jpg`;
+  const out = shapeBoard(board({ bg_preset: "cream-dots", card_color: "pink", bg_image_path: bgPath }), [], [], ME, new Map([[bgPath, "https://signed/bg"]]));
+  assert.equal(out.board.bg_preset, "cream-dots");
+  assert.equal(out.board.card_color, "pink");
+  assert.equal(out.board.bg_image, "https://signed/bg");
+  assert.equal("bg_image_path" in out.board, false);
+});
+
 test("담벼락이면 칸을 보내지 않고, 이름 보이기면 친구 이름이 보인다", () => {
   const out = shapeBoard(board({ layout: "wall", show_names: true }), [{ id: "s1", title: "하나", position: 0 }], [row({ id: "c" })], ME, new Map());
   assert.equal(out.sections.length, 0);
