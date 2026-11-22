@@ -1,5 +1,6 @@
 // 팝업: 보드 만들기·설정, 글쓰기·고치기, 글 자세히 보기(댓글)
 import { h, put, fill, modal, icon, LAYOUTS, LIMITS, EMOJIS, checkFile, fileSize, timeAgo, confirmBox, toast } from "./common.js";
+import { BG_PRESETS, CARD_COLORS } from "./board-style.js";
 
 // ---------------------------------------------------------------------------
 // 보드 만들기 / 보드 설정
@@ -16,10 +17,14 @@ const PERMS = [
 export const BOARD_DEFAULTS = { layout: "wall", needs_approval: false, allow_post: true, allow_comments: true,
   allow_like: true, allow_emoji: true, allow_files: true, show_names: true };
 
-/** onSave(values) 가 오류 문구를 돌려주면 창에 보여 줘요. onDelete 가 있으면 "보드 지우기" 버튼 */
-export function openBoardDialog({ board = null, onSave, onDelete }) {
+/**
+ * onSave(values) 가 오류 문구를 돌려주면 창에 보여 줘요. onDelete 가 있으면 "보드 지우기" 버튼.
+ * upload(file) 이 있으면 배경 사진을 고를 수 있어요(보드를 만든 뒤 설정에서). onPreview(look) 는 고르는 동안 화면에 미리 보여 주기,
+ * onClose 는 창을 닫을 때(저장하지 않았으면 원래 꾸미기로 되돌리기).
+ */
+export function openBoardDialog({ board = null, onSave, onDelete, upload = null, onPreview = null, onClose = null }) {
   const v = { ...BOARD_DEFAULTS, ...(board || {}) };
-  const m = modal({ title: board ? "보드 설정" : "새 보드 만들기", wide: true, cls: "mb-dlg" });
+  const m = modal({ title: board ? "보드 설정" : "새 보드 만들기", wide: true, cls: "mb-dlg", onClose });
   const err = h("div", { class: "ss-alert ss-alert--error", role: "alert", hidden: true });
   const title = h("input", { class: "ss-input", id: "mb-b-title", maxlength: LIMITS.boardTitle, value: v.title || "", placeholder: "예: 우리 반 환경 캠페인", required: true, "data-autofocus": true });
   const desc = h("textarea", { class: "ss-input mb-textarea", id: "mb-b-desc", maxlength: LIMITS.boardDesc, rows: 2, placeholder: "학생에게 보일 안내 한 줄 (없어도 돼요)" });
@@ -40,10 +45,59 @@ export function openBoardDialog({ board = null, onSave, onDelete }) {
   const syncPerm = () => { for (const k of ["needs_approval", "allow_files"]) perm[k].closest("label").classList.toggle("is-off", !perm.allow_post.checked); };
   perm.allow_post.addEventListener("change", syncPerm); syncPerm();
 
+  // ---- 꾸미기: 배경(기본 · 무늬 · 그라데이션 · 사진) + 카드 색 ----
+  let photo = v.bg_image_path ? { path: v.bg_image_path, url: v.bg_image || null } : null;
+  const startBg = v.bg_image_path ? "photo" : v.bg_preset || "";
+  const bgOpt = (id, label, inner) => h("label", { class: "mb-swopt" },
+    h("input", { type: "radio", name: "mb-bg", value: id, checked: id === startBg, "aria-label": label }),
+    h("span", { class: "mb-bgsw", "data-bg": id === "photo" ? "" : id, "aria-hidden": "true" }, inner), h("span", { text: label }));
+  const photoSw = () => photo?.url ? h("img", { src: photo.url, alt: "" }) : icon("image");
+  const photoOpt = upload && bgOpt("photo", photo ? "사진" : "사진 고르기", photoSw());
+  const pickPhoto = h("input", { type: "file", accept: "image/png,image/jpeg,image/gif,image/webp", hidden: true });
+  const bgErr = h("p", { class: "ss-alert ss-alert--error", role: "alert", hidden: true });
+  photoOpt?.addEventListener("click", (e) => { if (!photo) { e.preventDefault(); pickPhoto.click(); } });
+  pickPhoto.addEventListener("change", async () => {
+    const f = pickPhoto.files?.[0]; pickPhoto.value = "";
+    if (!f) return;
+    const bad = checkFile(f, "image");
+    if (bad) { bgErr.textContent = bad; bgErr.hidden = false; return; }
+    bgErr.hidden = true;
+    const sw = photoOpt.querySelector(".mb-bgsw");
+    sw.replaceChildren(h("small", { text: "올리는 중…" }));
+    try {
+      const up = await upload(await shrinkImage(f));
+      photo = { path: up.path, url: up.url };
+      sw.replaceChildren(photoSw()); photoOpt.lastChild.textContent = "사진";
+      photoOpt.querySelector("input").checked = true; preview();
+    } catch (e) { sw.replaceChildren(photoSw()); bgErr.textContent = e?.userMessage || "사진을 올리지 못했어요. 다시 골라 주세요."; bgErr.hidden = false; }
+  });
+  const looks = h("div", { class: "mb-looks" },
+    h("div", { class: "mb-swatches", role: "radiogroup", "aria-label": "배경" },
+      bgOpt("", "기본"), photoOpt,
+      BG_PRESETS.filter((p) => p.group === "pattern").map((p) => bgOpt(p.id, p.label)),
+      BG_PRESETS.filter((p) => p.group === "gradient").map((p) => bgOpt(p.id, p.label))),
+    pickPhoto, bgErr,
+    upload && h("button", { class: "ss-btn ss-btn--ghost ss-btn--sm mb-looks__photo", type: "button", onclick: () => pickPhoto.click() }, icon("image"), " 배경 사진 올리기"),
+    !upload && h("p", { class: "mb-hint", text: "배경 사진은 보드를 만든 뒤 보드 설정에서 고를 수 있어요." }),
+    h("span", { class: "mb-looks__group", text: "카드 색" }),
+    h("div", { class: "mb-swatches mb-swatches--cards", role: "radiogroup", "aria-label": "카드 색" },
+      [{ id: "", label: "기본" }, ...CARD_COLORS].map((c) => h("label", { class: "mb-swopt" },
+        h("input", { type: "radio", name: "mb-card", value: c.id, checked: c.id === (v.card_color || ""), "aria-label": `카드 ${c.label}` }),
+        h("span", { class: "mb-cardsw", "data-card": c.id || null, "aria-hidden": "true", text: "가" }), h("span", { text: c.label })))));
+  const look = () => {
+    const bg = m.body.querySelector('input[name="mb-bg"]:checked')?.value ?? "";
+    const card = m.body.querySelector('input[name="mb-card"]:checked')?.value ?? "";
+    return { bg_preset: bg && bg !== "photo" ? bg : null, bg_image_path: bg === "photo" ? photo?.path ?? null : null,
+      bg_image: bg === "photo" ? photo?.url ?? null : null, card_color: card || null };
+  };
+  const preview = () => onPreview?.(look());
+  looks.addEventListener("change", (e) => { if (e.target.name === "mb-bg" || e.target.name === "mb-card") preview(); });
+
   put(m.body, err,
     h("div", { class: "mb-field" }, h("label", { class: "ss-label", for: "mb-b-title", text: "보드 이름" }), title),
     h("div", { class: "mb-field" }, h("label", { class: "ss-label", for: "mb-b-desc", text: "안내" }), desc),
     h("fieldset", { class: "mb-field" }, h("legend", { class: "ss-label", text: "배치" }), layoutPick),
+    h("fieldset", { class: "mb-field" }, h("legend", { class: "ss-label", text: "꾸미기" }), looks),
     h("fieldset", { class: "mb-field" }, h("legend", { class: "ss-label", text: "학생이 할 수 있는 것" }), permList));
 
   const save = h("button", { class: "ss-btn ss-btn--main", type: "button", text: board ? "저장" : "만들기" });
@@ -52,7 +106,11 @@ export function openBoardDialog({ board = null, onSave, onDelete }) {
     if (!t) { err.textContent = "보드 이름을 적어 주세요."; err.hidden = false; title.focus(); return; }
     const values = { title: t, description: desc.value.trim(),
       layout: m.body.querySelector('input[name="mb-layout"]:checked').value,
-      ...Object.fromEntries(PERMS.map(([k]) => [k, perm[k].checked])) };
+      ...Object.fromEntries(PERMS.map(([k]) => [k, perm[k].checked])), ...look() };
+    if (m.body.querySelector('input[name="mb-bg"]:checked')?.value === "photo" && !values.bg_image_path) {
+      err.textContent = "배경 사진을 골라 주세요."; err.hidden = false; return;
+    }
+    delete values.bg_image;   // 보여 주기용 주소는 저장하지 않아요
     save.disabled = true; save.textContent = board ? "저장하는 중…" : "만드는 중…";
     const bad = await onSave(values);
     if (bad) { err.textContent = bad; err.hidden = false; save.disabled = false; save.textContent = board ? "저장" : "만들기"; return; }
@@ -221,4 +279,19 @@ export function reactionBar(p, board, { onLike, onEmoji, big = false }) {
     board.allow_like && btn("mb-react--like", p.liked, `좋아요 ${p.likes}개`, [icon("heart"), h("span", { text: String(p.likes || 0) })], (e) => { e.stopPropagation(); onLike(); }),
     board.allow_emoji && used.map(([em, n]) => btn("", p.my_emojis?.includes(em), `${em} ${n}개`, [h("span", { text: em }), h("span", { text: String(n) })], (e) => { e.stopPropagation(); onEmoji(em); })),
     add);
+}
+
+/** 큰 사진은 긴 쪽 1920px 로 줄여 JPG 로(원본 학급패들렛과 같음). 줄일 수 없으면 원본 그대로 */
+export async function shrinkImage(file, max = 1920, quality = 0.85) {
+  if (!/^image\/(png|jpeg|webp)$/.test(file.type)) return file;
+  try {
+    const bmp = await createImageBitmap(file);
+    const k = Math.min(1, max / Math.max(bmp.width, bmp.height));
+    if (k === 1 && file.size < 1.5 * 1024 * 1024) return file;
+    const c = document.createElement("canvas");
+    c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+    const blob = await new Promise((ok) => c.toBlob(ok, "image/jpeg", quality));
+    return blob ? new File([blob], "background.jpg", { type: "image/jpeg" }) : file;
+  } catch { return file; }
 }

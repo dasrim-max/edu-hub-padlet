@@ -77,6 +77,19 @@ do $$ begin
   insert into r(name,pass) values ('교사A: 다른 교사 폴더에 못 올림', false);
 exception when others then insert into r(name,pass) values ('교사A: 다른 교사 폴더에 못 올림', true); end $$;
 
+do $$ begin
+  update moaboard_boards set bg_preset='cream-dots', card_color='pink', bg_image_path='11111111-1111-4111-8111-111111111111/b0000000-0000-4000-8000-00000000000a/t/bg.jpg' where id='b0000000-0000-4000-8000-00000000000a';
+  insert into r(name,pass) values ('교사A: 보드 꾸미기(무늬·카드 색·자기 폴더 배경 사진) 저장', true);
+exception when others then insert into r(name,pass) values ('교사A: 보드 꾸미기(무늬·카드 색·자기 폴더 배경 사진) 저장', false); end $$;
+do $$ begin
+  update moaboard_boards set bg_image_path='22222222-2222-4222-8222-222222222222/b0000000-0000-4000-8000-00000000000b/t/x.jpg' where id='b0000000-0000-4000-8000-00000000000a';
+  insert into r(name,pass) values ('교사A: 다른 교사 파일을 배경으로 못 씀', false);
+exception when others then insert into r(name,pass) values ('교사A: 다른 교사 파일을 배경으로 못 씀', true); end $$;
+do $$ begin
+  update moaboard_posts set image_path='22222222-2222-4222-8222-222222222222/b0000000-0000-4000-8000-00000000000b/x/x.png' where id='d0000000-0000-4000-8000-00000000000a';
+  insert into r(name,pass) values ('교사A: 다른 보드 파일을 글 사진으로 못 씀', false);
+exception when others then insert into r(name,pass) values ('교사A: 다른 보드 파일을 글 사진으로 못 씀', true); end $$;
+
 -- 교사B: A가 한 일이 B 쪽에 없는지
 select set_config('request.jwt.claims', '{"sub":"22222222-2222-4222-8222-222222222222","role":"authenticated"}', true);
 insert into r(name,pass) select '교사B: 자기 글은 그대로(A가 못 고침)', (select body from moaboard_posts where id='d0000000-0000-4000-8000-00000000000b')='B 글';

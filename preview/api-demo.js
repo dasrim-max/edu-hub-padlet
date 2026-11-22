@@ -10,11 +10,11 @@ const uid = () => `00000000-0000-4000-8000-${String(++seq).padStart(12, "0")}`;
 // ---- 예시 데이터 ----
 const STUDENTS = ["김민준A", "이서연", "박지호", "최하윤", "정우진", "한도윤", "윤지아", "강시우"];
 const boards = [
-  { id: "00000000-0000-4000-8000-000000000001", title: "우리 반 환경 캠페인", description: "캠페인 아이디어를 하나씩 붙여 주세요.", layout: "column",
+  { id: "00000000-0000-4000-8000-000000000001", title: "우리 반 환경 캠페인", description: "캠페인 아이디어를 하나씩 붙여 주세요.", layout: "column", bg_preset: "cream-dots", card_color: null,
     needs_approval: true, allow_post: true, allow_comments: true, allow_like: true, allow_emoji: true, allow_files: true, show_names: true, updated_at: ago(3) },
-  { id: "00000000-0000-4000-8000-000000000002", title: "오늘 배운 것 한 줄", description: "", layout: "wall",
+  { id: "00000000-0000-4000-8000-000000000002", title: "오늘 배운 것 한 줄", description: "", layout: "wall", bg_preset: null, card_color: "yellow",
     needs_approval: false, allow_post: true, allow_comments: true, allow_like: true, allow_emoji: false, allow_files: false, show_names: false, updated_at: ago(60 * 26) },
-  { id: "00000000-0000-4000-8000-000000000003", title: "과학 실험 보고서 모음", description: "모둠별로 사진과 보고서 파일을 올려요.", layout: "grid",
+  { id: "00000000-0000-4000-8000-000000000003", title: "과학 실험 보고서 모음", description: "모둠별로 사진과 보고서 파일을 올려요.", layout: "grid", bg_preset: "navy-grid", card_color: null,
     needs_approval: false, allow_post: true, allow_comments: false, allow_like: true, allow_emoji: true, allow_files: true, show_names: true, updated_at: ago(60 * 24 * 6) },
 ];
 const sections = [
@@ -108,6 +108,7 @@ export async function updateBoard(id, patch) {
   await wait(150);
   const b = boards.find((x) => x.id === id);
   Object.assign(b, patch); touch(id);
+  b.bg_image = patch.bg_image_path ?? null;   // 시안: 올린 사진 주소를 그대로 경로로 써요
   if (b.layout !== "wall" && !sections.some((s) => s.board_id === id)) sections.push({ id: uid(), board_id: id, title: "첫 번째 칸", position: 0 });
   emit(); return clone(b);
 }
@@ -193,7 +194,8 @@ export async function deleteComment(postId, commentId) {
 // ---- 파일 올리기 (개발 시: 비공개 저장소 moaboard-files 에 올리고, 보여 줄 때는 잠깐 쓰는 주소를 받아요) ----
 export async function uploadFile(file) {
   await wait(400);
-  return { name: file.name, size: file.size, url: URL.createObjectURL(file) };
+  const url = URL.createObjectURL(file);
+  return { name: file.name, size: file.size, url, path: url };
 }
 
 // ---- 학생 초대 (개발 시: hub.openInvite({ appSlug, contentId, title }) 를 그대로 불러요) ----

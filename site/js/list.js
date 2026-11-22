@@ -46,8 +46,9 @@ export async function mountList({ root, api, bar, openNew = false, onOpen }) {
     grid.replaceChildren(...list.map((b) => {
       const layout = (LAYOUTS.find(([k]) => k === b.layout) || [, ""])[1];
       return h("a", { class: "mb-bcard", href: `?c=${encodeURIComponent(b.id)}`, onclick: (e) => { e.preventDefault(); onOpen(b.id, b.title); } },
-        h("span", { class: "mb-bcard__thumb", "aria-hidden": "true" },
-          h("span", { class: `mb-mini mb-mini--${b.layout}` }, Array.from({ length: 6 }, () => h("i")))),
+        h("span", { class: "mb-bcard__thumb", "data-bg": b.bg_image ? null : b.bg_preset || null, "data-card": b.card_color || null, "aria-hidden": "true" },
+          b.bg_image ? h("img", { class: "mb-bcard__photo", src: b.bg_image, alt: "", loading: "lazy" })
+            : h("span", { class: `mb-mini mb-mini--${b.layout}` }, Array.from({ length: 6 }, () => h("i")))),
         h("span", { class: "mb-bcard__title", text: b.title }),
         h("span", { class: "mb-bcard__meta", text: `${layout} · 글 ${b.post_count}개 · ${timeAgo(b.updated_at)}` }),
         b.pending_count > 0 && h("span", { class: "ss-badge ss-badge--expired mb-bcard__badge", text: `확인 기다림 ${b.pending_count}` }));

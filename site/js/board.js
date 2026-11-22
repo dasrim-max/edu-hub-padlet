@@ -2,6 +2,7 @@
 import { h, put, fill, icon, iconBtn, modal, confirmBox, toast, timeAgo, errorBox, LIMITS } from "./common.js";
 import { openCompose, openPostDetail, openBoardDialog, fileChip, reactionBar } from "./dialogs.js";
 import { openSlideshow } from "./slideshow.js";
+import { bgPreset, cardColor } from "./board-style.js";
 
 /**
  * @param o.root      그릴 곳
@@ -39,6 +40,20 @@ export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInv
   }
   if (!(await load())) return;
 
+  /** 보드 꾸미기: <html data-mb-bg · data-mb-card> + 배경 사진(화면 뒤에 깔기). 색·무늬는 css/moaboard-style.css */
+  let photoEl = null;
+  function applyLook(b) {
+    const root = document.documentElement;
+    const bg = b.bg_image ? "photo" : bgPreset(b.bg_preset) ? b.bg_preset : null;
+    if (bg) root.setAttribute("data-mb-bg", bg); else root.removeAttribute("data-mb-bg");
+    if (cardColor(b.card_color)) root.setAttribute("data-mb-card", b.card_color); else root.removeAttribute("data-mb-card");
+    if (b.bg_image) {
+      photoEl ??= h("img", { class: "mb-bgphoto", alt: "", "aria-hidden": "true" });
+      if (photoEl.getAttribute("src") !== b.bg_image) photoEl.src = b.bg_image;
+      if (!photoEl.isConnected) document.body.prepend(photoEl);
+    } else photoEl?.remove();
+  }
+  applyLook(data.board);
   onTitle?.(data.board.title);
 
   // ---- 교사 앱 메뉴 ----
@@ -49,8 +64,17 @@ export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInv
       if (!list.length) return toast("보여 줄 글이 아직 없어요");
       openSlideshow({ posts: list, board: data.board, showName });
     });
+    let picked = null;   // 설정 창에서 마지막으로 미리 본 꾸미기(사진 주소 포함)
     bar.addAction("보드 설정", () => openBoardDialog({ board: data.board,
-      onSave: async (v) => { try { await api.updateBoard(boardId, v); toast("저장했어요"); } catch (e) { return e?.userMessage || "저장하지 못했어요. 다시 시도해 주세요."; } },
+      upload: (f) => api.uploadFile(f, "image"),
+      onPreview: (look) => { picked = look; applyLook({ ...data.board, ...look }); },
+      onClose: () => applyLook(data.board),   // 저장했으면 새 값, 취소했으면 원래 꾸미기
+      onSave: async (v) => {
+        try {
+          await api.updateBoard(boardId, v);
+          data.board = { ...data.board, ...v, bg_image: v.bg_image_path ? (picked?.bg_image ?? data.board.bg_image) : null };
+          toast("저장했어요");
+        } catch (e) { return e?.userMessage || "저장하지 못했어요. 다시 시도해 주세요."; } },
       onDelete: async () => { if (await guard(api.deleteBoard(boardId))) onDeleted?.(); } }));
   }
 
@@ -266,6 +290,7 @@ export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInv
     if (dragging) { dirty = true; return; }   // 끄는 중에는 다시 그리지 않아요(끝나면 그려요)
     const b = data.board;
     onTitle?.(b.title);
+    applyLook(b);
     const all = data.posts.filter((p) => teacher || p.status === "visible" || p.mine);
     const pendingN = data.posts.filter((p) => p.status === "pending").length;
 
