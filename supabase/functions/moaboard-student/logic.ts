@@ -60,7 +60,7 @@ export function uploadPath(b: Record<string, unknown>, own: { teacherId: string;
 
 export type Board = { id: string; title: string; description: string; layout: string; needs_approval: boolean; allow_post: boolean;
   allow_comments: boolean; allow_like: boolean; allow_emoji: boolean; allow_files: boolean; show_names: boolean; updated_at: string;
-  bg_preset?: string | null; bg_image_path?: string | null; card_color?: string | null };
+  bg_preset?: string | null; bg_image_path?: string | null; card_color?: string | null; comments_inline?: boolean };
 export type PostRow = { id: string; board_id: string; section_id: string | null; position: number; student_id: string | null; by_teacher: boolean;
   author_name: string; title: string; body: string; image_path: string | null; file_path: string | null; file_name: string | null; file_size: number | null;
   status: string; created_at: string; moaboard_comments?: CommentRow[]; moaboard_reactions?: { actor_id: string; kind: string }[] };
@@ -93,7 +93,7 @@ export function shapeBoard(board: Board, sections: { id: string; title: string; 
     board: { id: board.id, title: board.title, description: board.description, layout: board.layout, needs_approval: board.needs_approval,
       allow_post: board.allow_post, allow_comments: board.allow_comments, allow_like: board.allow_like, allow_emoji: board.allow_emoji,
       allow_files: board.allow_files, show_names: board.show_names, updated_at: board.updated_at,
-      bg_preset: board.bg_preset ?? null, card_color: board.card_color ?? null, bg_image: board.bg_image_path ? urls.get(board.bg_image_path) ?? null : null },
+      comments_inline: board.comments_inline !== false, bg_preset: board.bg_preset ?? null, card_color: board.card_color ?? null, bg_image: board.bg_image_path ? urls.get(board.bg_image_path) ?? null : null },
     sections: board.layout === "wall" ? [] : sections.slice().sort((a, b) => a.position - b.position),
     posts,
   };

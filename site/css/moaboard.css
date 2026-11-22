@@ -332,3 +332,21 @@
 /* 어두운 배경·카드에서도 읽히게 */
 .mb-head .mb-pill:not([aria-pressed="true"]) { background: var(--ap-card); color: var(--ap-text); }
 :root[data-mb-card] .mb-card .ss-btn:not(.ss-btn--main) { background: color-mix(in srgb, currentColor 12%, transparent); color: inherit; }
+
+/* ---- 글 아래 댓글(보드 설정 "댓글을 글 아래에 바로 보여요") ---- */
+.mb-ccmts { display: grid; gap: 6px; padding-top: 8px; border-top: 1px solid color-mix(in srgb, currentColor 15%, transparent); cursor: default; }
+.mb-ccmts__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.mb-ccmt { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; font-size: 13px; line-height: 1.45; }
+.mb-ccmt b { flex: none; font-weight: 700; }
+.mb-ccmt > span { flex: 1 1 120px; min-width: 0; overflow-wrap: anywhere; }
+.mb-ccmt.is-teacher b { color: var(--as-acc, var(--ap-accent)); }
+.mb-ccmt .mb-linkbtn { font-size: 12px; }
+.mb-ccmts__more { justify-self: start; padding: 0; color: inherit; opacity: .75; font-size: 12px; text-decoration: underline; }
+.mb-ccmts__form { display: flex; gap: 6px; }
+.mb-ccmts__input { flex: 1; min-width: 0; height: 32px; font-size: 13px; }
+.mb-ccmts__form .ss-btn { flex: none; }
+/* 학생 화면: 글자 20px·누르는 곳 52px */
+.mb-card--big .mb-ccmt { font-size: 18px; }
+.mb-card--big .mb-ccmts__more, .mb-card--big .mb-ccmt .mb-linkbtn { font-size: 16px; min-height: 44px; }
+.mb-card--big .mb-ccmts__input { height: 52px; font-size: 20px; }
+.mb-card--big .mb-ccmts__form .ss-btn { min-height: 52px; padding: 0 20px; font-size: 20px; }

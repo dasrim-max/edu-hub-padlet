@@ -3,10 +3,10 @@
 import { SLUG, fileExt } from "./common.js";
 
 const BUCKET = "moaboard-files";
-const BOARD_COLS = "id, title, description, layout, needs_approval, allow_post, allow_comments, allow_like, allow_emoji, allow_files, show_names, bg_preset, bg_image_path, card_color, created_at, updated_at";
+const BOARD_COLS = "id, title, description, layout, needs_approval, allow_post, allow_comments, allow_like, allow_emoji, allow_files, show_names, comments_inline, bg_preset, bg_image_path, card_color, created_at, updated_at";
 const POST_COLS = "id, board_id, section_id, position, student_id, by_teacher, author_name, title, body, image_path, file_path, file_name, file_size, status, created_at, " +
   "moaboard_comments(id, by_teacher, author_name, body, created_at), moaboard_reactions(actor_id, kind)";
-const EDITABLE = ["title", "description", "layout", "needs_approval", "allow_post", "allow_comments", "allow_like", "allow_emoji", "allow_files", "show_names", "bg_preset", "bg_image_path", "card_color"];
+const EDITABLE = ["title", "description", "layout", "needs_approval", "allow_post", "allow_comments", "allow_like", "allow_emoji", "allow_files", "show_names", "comments_inline", "bg_preset", "bg_image_path", "card_color"];
 const pick = (o, keys) => Object.fromEntries(keys.filter((k) => k in o).map((k) => [k, o[k]]));
 const must = ({ data, error }) => { if (error) throw error; return data; };
 

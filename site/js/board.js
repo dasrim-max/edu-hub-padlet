@@ -131,8 +131,9 @@ export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInv
         h("span", { class: "mb-card__meta", text: [showName(p), timeAgo(p.created_at)].filter(Boolean).join(" · ") }),
         !pending && reactionBar(p, data.board, { big, onLike: () => guard(api.toggleLike(p.id)), onEmoji: (em) => guard(api.toggleEmoji(p.id, em)) }),
         !pending && data.board.allow_comments && h("button", { class: "mb-react mb-react--cmt", type: "button", "aria-label": `댓글 ${p.comments.length}개 보기`, onclick: (e) => { e.stopPropagation(); detail(p.id); } },
-          icon("chat"), h("span", { text: String(p.comments.length) }))));
-    el.addEventListener("click", (e) => { if (!e.target.closest("a,button")) detail(p.id); });
+          icon("chat"), h("span", { text: String(p.comments.length) }))),
+      !pending && inlineComments() && commentsBlock(p, big));
+    el.addEventListener("click", (e) => { if (!e.target.closest("a,button,input,form,.mb-ccmts")) detail(p.id); });
     el.addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target === el) detail(p.id); });
     if (teacher && data.board.layout !== "wall") {
       el.draggable = true;
@@ -140,6 +141,32 @@ export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInv
       el.addEventListener("dragend", () => { dragging = null; el.classList.remove("is-drag"); clearMarker(); if (dirty) { dirty = false; draw(); } });
     }
     return el;
+  }
+
+  // ---- 글 아래 댓글(보드 설정 "댓글을 글 아래에 바로 보여요") ----
+  const SHOW_COMMENTS = 3;
+  const drafts = new Map();   // 쓰던 댓글: 화면을 다시 그려도 남게(글 id → 글자)
+  const inlineComments = () => data.board.allow_comments && data.board.comments_inline !== false;
+  function commentsBlock(p, big) {
+    const list = p.comments.slice(-SHOW_COMMENTS);
+    const more = p.comments.length - list.length;
+    const input = h("input", { class: "ss-input mb-ccmts__input" + (big ? " ss-input--lg" : ""), maxlength: LIMITS.comment, placeholder: "댓글 쓰기",
+      "aria-label": "댓글 쓰기", "data-ccmt": p.id, value: drafts.get(p.id) || "", oninput: (e) => drafts.set(p.id, e.target.value) });
+    const send = h("button", { class: "ss-btn ss-btn--sm ss-btn--main", type: "submit", text: "쓰기" });
+    return h("div", { class: "mb-ccmts" },
+      more > 0 && h("button", { class: "mb-linkbtn mb-ccmts__more", type: "button", text: `댓글 ${p.comments.length}개 모두 보기`, onclick: (e) => { e.stopPropagation(); detail(p.id); } }),
+      list.length > 0 && h("ul", { class: "mb-ccmts__list", "aria-label": "댓글" }, list.map((c) => h("li", { class: "mb-ccmt" + (c.by_teacher ? " is-teacher" : "") },
+        h("b", { text: showName(c) || "친구" }), h("span", { text: c.body }),
+        (teacher || c.mine) && h("button", { class: "mb-linkbtn", type: "button", text: "지우기", "aria-label": "이 댓글 지우기",
+          onclick: (e) => { e.stopPropagation(); guard(api.deleteComment(p.id, c.id)); } })))),
+      h("form", { class: "mb-ccmts__form", onsubmit: async (e) => {
+        e.preventDefault(); e.stopPropagation();
+        const t = input.value.trim(); if (!t) return;
+        send.disabled = true;
+        try { await api.addComment(p.id, t, { asTeacher: teacher, author: me.name }); drafts.delete(p.id); input.value = ""; }
+        catch (err) { toast(err?.userMessage || "댓글을 쓰지 못했어요. 다시 해 주세요."); }
+        send.disabled = false;
+      } }, input, send));
   }
 
   function detail(id) {
@@ -347,7 +374,9 @@ export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInv
         ? h("div", { class: "mb-cols" }, blocks, addSectionBtn())
         : h("div", { class: "mb-rows" }, blocks, addSectionBtn());
     }
+    const act = document.activeElement?.dataset?.ccmt ? { id: document.activeElement.dataset.ccmt, at: document.activeElement.selectionStart } : null;
     stage.replaceChildren(content);
+    if (act) { const i = stage.querySelector(`[data-ccmt="${act.id}"]`); if (i) { i.focus(); try { i.setSelectionRange(act.at, act.at); } catch { /* 무시 */ } } }
     const cols = stage.querySelector(".mb-cols");
     if (cols) {
       cols.scrollLeft = keepX;

@@ -9,13 +9,14 @@ const PERMS = [
   ["allow_post", "학생이 글을 쓸 수 있어요", "끄면 학생은 보기만 해요"],
   ["needs_approval", "선생님이 확인한 글만 보여요", "학생 글은 선생님이 '보이기'를 눌러야 친구들에게 보여요"],
   ["allow_comments", "댓글", ""],
+  ["comments_inline", "댓글을 글 아래에 바로 보여요", "끄면 댓글 수만 보이고, 눌러야 열려요"],
   ["allow_like", "좋아요", ""],
   ["allow_emoji", "이모지 반응", ""],
   ["allow_files", "사진·파일 올리기", "사진 10MB, 파일 20MB까지"],
   ["show_names", "친구 이름 보이기", "끄면 학생 화면에는 이름 없이 보여요(선생님은 늘 보여요)"],
 ];
 export const BOARD_DEFAULTS = { layout: "wall", needs_approval: false, allow_post: true, allow_comments: true,
-  allow_like: true, allow_emoji: true, allow_files: true, show_names: true };
+  allow_like: true, allow_emoji: true, allow_files: true, show_names: true, comments_inline: true };
 
 /**
  * onSave(values) 가 오류 문구를 돌려주면 창에 보여 줘요. onDelete 가 있으면 "보드 지우기" 버튼.
@@ -42,8 +43,11 @@ export function openBoardDialog({ board = null, onSave, onDelete, upload = null,
   const permList = h("div", { class: "mb-perms" }, PERMS.map(([k, label, sub]) =>
     h("label", { class: "ss-check mb-perm" }, perm[k], h("span", {}, h("b", { text: label }), sub && h("small", { text: sub })))));
   // 글쓰기를 끄면 확인·파일 칸은 뜻이 없어서 흐리게
-  const syncPerm = () => { for (const k of ["needs_approval", "allow_files"]) perm[k].closest("label").classList.toggle("is-off", !perm.allow_post.checked); };
-  perm.allow_post.addEventListener("change", syncPerm); syncPerm();
+  const syncPerm = () => {
+    for (const k of ["needs_approval", "allow_files"]) perm[k].closest("label").classList.toggle("is-off", !perm.allow_post.checked);
+    perm.comments_inline.closest("label").classList.toggle("is-off", !perm.allow_comments.checked);
+  };
+  perm.allow_post.addEventListener("change", syncPerm); perm.allow_comments.addEventListener("change", syncPerm); syncPerm();
 
   // ---- 꾸미기: 배경(기본 · 무늬 · 그라데이션 · 사진) + 카드 색 ----
   let photo = v.bg_image_path ? { path: v.bg_image_path, url: v.bg_image || null } : null;
