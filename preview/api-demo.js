@@ -148,7 +148,7 @@ export async function createPost(boardId, v, { asTeacher, needsApproval, author 
   const pos = Math.max(-1, ...posts.filter((p) => p.board_id === boardId && p.section_id === sec).map((p) => p.position)) + 1;
   posts.push({ id: uid(), board_id: boardId, section_id: sec, position: pos, title: v.title, body: v.body,
     author: asTeacher ? "선생님" : author, by_teacher: !!asTeacher, mine: true,
-    status: !asTeacher && needsApproval ? "pending" : "visible", image: v.image || null, file: v.file || null,
+    status: !asTeacher && needsApproval ? "pending" : "visible", image: v.image || null, file: v.file || null, video: v.video || null,
     created_at: new Date().toISOString(), likes: 0, liked: false, emojis: {}, my_emojis: [], comments: [] });
   touch(boardId); emit();
 }

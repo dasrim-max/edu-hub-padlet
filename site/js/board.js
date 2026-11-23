@@ -1,5 +1,5 @@
 // 보드 화면(교사·학생 공통). 교사: 모든 글 + 확인·옮기기·칸 관리 / 학생: 보이는 글 + 내 글, 한 번에 칸 하나
-import { h, put, fill, icon, iconBtn, modal, confirmBox, toast, timeAgo, errorBox, LIMITS } from "./common.js";
+import { h, put, fill, icon, iconBtn, modal, confirmBox, toast, timeAgo, errorBox, LIMITS, videoEl } from "./common.js";
 import { openCompose, openPostDetail, openBoardDialog, fileChip, reactionBar } from "./dialogs.js";
 import { openSlideshow } from "./slideshow.js";
 import { bgPreset, cardColor } from "./board-style.js";
@@ -121,6 +121,7 @@ export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInv
       canEdit(p) && h("button", { class: "mb-iconbtn", type: "button", "aria-label": "글 메뉴", "aria-haspopup": "menu", onclick: (e) => { e.stopPropagation(); postMenu(p, e.currentTarget); } }, icon("more")));
     put(el, top,
       p.image && h("img", { class: "mb-card__img", src: p.image, alt: p.title ? `${p.title} 사진` : "올린 사진", loading: "lazy" }),
+      p.video && videoEl(p.video, { cls: "mb-card__video", label: `${p.title || "글"} 영상` }),
       p.title && h("h3", { class: "mb-card__title", text: p.title }),
       p.body && h("p", { class: "mb-card__body", text: p.body }),
       p.file && fileChip(p.file),
@@ -133,7 +134,7 @@ export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInv
         !pending && data.board.allow_comments && h("button", { class: "mb-react mb-react--cmt", type: "button", "aria-label": `댓글 ${p.comments.length}개 보기`, onclick: (e) => { e.stopPropagation(); detail(p.id); } },
           icon("chat"), h("span", { text: String(p.comments.length) }))),
       !pending && inlineComments() && commentsBlock(p, big));
-    el.addEventListener("click", (e) => { if (!e.target.closest("a,button,input,form,.mb-ccmts")) detail(p.id); });
+    el.addEventListener("click", (e) => { if (!e.target.closest("a,button,input,form,video,.mb-ccmts")) detail(p.id); });
     el.addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target === el) detail(p.id); });
     if (teacher && data.board.layout !== "wall") {
       el.draggable = true;

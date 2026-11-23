@@ -4,7 +4,7 @@ import { SLUG, fileExt } from "./common.js";
 
 const BUCKET = "moaboard-files";
 const BOARD_COLS = "id, title, description, layout, needs_approval, allow_post, allow_comments, allow_like, allow_emoji, allow_files, show_names, comments_inline, bg_preset, bg_image_path, card_color, created_at, updated_at";
-const POST_COLS = "id, board_id, section_id, position, student_id, by_teacher, author_name, title, body, image_path, file_path, file_name, file_size, status, created_at, " +
+const POST_COLS = "id, board_id, section_id, position, student_id, by_teacher, author_name, title, body, image_path, file_path, file_name, file_size, video_path, video_name, video_size, status, created_at, " +
   "moaboard_comments(id, by_teacher, author_name, body, created_at), moaboard_reactions(actor_id, kind)";
 const EDITABLE = ["title", "description", "layout", "needs_approval", "allow_post", "allow_comments", "allow_like", "allow_emoji", "allow_files", "show_names", "comments_inline", "bg_preset", "bg_image_path", "card_color"];
 const pick = (o, keys) => Object.fromEntries(keys.filter((k) => k in o).map((k) => [k, o[k]]));
@@ -54,7 +54,7 @@ export function createTeacherApi(hub) {
         sb.from("moaboard_sections").select("id, board_id, title, position").eq("board_id", id).order("position").then(must),
         sb.from("moaboard_posts").select(POST_COLS).eq("board_id", id).order("created_at").limit(1000).then(must),
       ]);
-      const url = await signed([board.bg_image_path, ...rows.flatMap((p) => [p.image_path, p.file_path])]);
+      const url = await signed([board.bg_image_path, ...rows.flatMap((p) => [p.image_path, p.file_path, p.video_path])]);
       board.bg_image = url(board.bg_image_path);
       const posts = rows.map((p) => {
         const rx = p.moaboard_reactions ?? [], emojis = {};
@@ -64,6 +64,7 @@ export function createTeacherApi(hub) {
           author: p.author_name, by_teacher: p.by_teacher, mine: p.by_teacher, status: p.status, created_at: p.created_at,
           image: url(p.image_path), image_path: p.image_path,
           file: p.file_path ? { name: p.file_name, size: p.file_size ?? 0, url: url(p.file_path), path: p.file_path } : null,
+          video: p.video_path ? { name: p.video_name || "영상", size: p.video_size ?? 0, url: url(p.video_path), path: p.video_path } : null,
           likes: rx.filter((r) => r.kind === "like").length, liked: rx.some((r) => r.kind === "like" && r.actor_id === me),
           emojis, my_emojis: rx.filter((r) => r.kind !== "like" && r.actor_id === me).map((r) => r.kind),
           comments: (p.moaboard_comments ?? []).sort((a, b) => a.created_at.localeCompare(b.created_at))
@@ -91,9 +92,9 @@ export function createTeacherApi(hub) {
     },
     async deleteBoard(id) {
       // 파일 먼저(행이 지워지면 경로를 알 수 없어요)
-      const rows = must(await sb.from("moaboard_posts").select("image_path, file_path").eq("board_id", id));
+      const rows = must(await sb.from("moaboard_posts").select("image_path, file_path, video_path").eq("board_id", id));
       const bg = must(await sb.from("moaboard_boards").select("bg_image_path").eq("id", id).maybeSingle());
-      await removeFiles([bg?.bg_image_path, ...rows.flatMap((p) => [p.image_path, p.file_path])]);
+      await removeFiles([bg?.bg_image_path, ...rows.flatMap((p) => [p.image_path, p.file_path, p.video_path])]);
       must(await sb.from("moaboard_boards").delete().eq("id", id));
       await hub.removeActivity({ appSlug: SLUG, contentId: id });
     },
@@ -122,21 +123,23 @@ export function createTeacherApi(hub) {
       const pos = Math.max(-1, ...(last?.posts ?? []).filter((p) => p.section_id === sec).map((p) => p.position)) + 1;
       must(await sb.from("moaboard_posts").insert({ board_id: boardId, section_id: sec, position: pos, by_teacher: true, author_name: "선생님",
         title: v.title, body: v.body, image_path: v.image_path ?? null,
-        file_path: v.file?.path ?? null, file_name: v.file?.name ?? null, file_size: v.file?.size ?? null }));
+        file_path: v.file?.path ?? null, file_name: v.file?.name ?? null, file_size: v.file?.size ?? null,
+        video_path: v.video?.path ?? null, video_name: v.video?.path ? v.video.name : null, video_size: v.video?.path ? v.video.size : null }));
       changed();
     },
     async updatePost(id, v) {
       const old = last?.posts.find((p) => p.id === id);
       const patch = { title: v.title, body: v.body, section_id: v.section_id ?? null, image_path: v.image_path ?? null,
-        file_path: v.file?.path ?? null, file_name: v.file?.name ?? null, file_size: v.file?.size ?? null };
+        file_path: v.file?.path ?? null, file_name: v.file?.name ?? null, file_size: v.file?.size ?? null,
+        video_path: v.video?.path ?? null, video_name: v.video?.path ? v.video.name : null, video_size: v.video?.path ? v.video.size : null };
       must(await sb.from("moaboard_posts").update(patch).eq("id", id));
-      if (old) await removeFiles([old.image_path !== patch.image_path && old.image_path, old.file?.path !== patch.file_path && old.file?.path]);
+      if (old) await removeFiles([old.image_path !== patch.image_path && old.image_path, old.file?.path !== patch.file_path && old.file?.path, old.video?.path !== patch.video_path && old.video?.path]);
       changed();
     },
     async deletePost(id) {
       const old = last?.posts.find((p) => p.id === id);
       must(await sb.from("moaboard_posts").delete().eq("id", id));
-      if (old) await removeFiles([old.image_path, old.file?.path]);
+      if (old) await removeFiles([old.image_path, old.file?.path, old.video?.path]);
       changed();
     },
     async approvePost(id) { must(await sb.from("moaboard_posts").update({ status: "visible" }).eq("id", id)); changed(); },

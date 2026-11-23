@@ -18,9 +18,10 @@ export const EMOJIS = ["👍", "😊", "😮", "👏", "🤔"];
 
 export const LIMITS = {
   title: 60, body: 1000, comment: 200, boardTitle: 80, boardDesc: 200, section: 30, sections: 12,
-  imageBytes: 10 * 1024 * 1024, fileBytes: 20 * 1024 * 1024,
+  imageBytes: 10 * 1024 * 1024, fileBytes: 20 * 1024 * 1024, videoBytes: 50 * 1024 * 1024,
 };
 export const IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+export const VIDEO_EXT = ["mp4", "webm", "mov", "m4v"];
 export const FILE_EXT = ["pdf", "hwp", "hwpx", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "zip"];
 
 export function timeAgo(iso) {
@@ -43,6 +44,9 @@ export function checkFile(file, kind) {
   if (kind === "image") {
     if (!IMAGE_TYPES.includes(file.type)) return "사진은 PNG, JPG, GIF, WEBP 파일만 올릴 수 있어요.";
     if (file.size > LIMITS.imageBytes) return "사진이 10MB보다 커요. 크기를 줄여서 다시 골라 주세요.";
+  } else if (kind === "video") {
+    if (!VIDEO_EXT.includes(fileExt(file.name))) return "영상은 MP4, WEBM, MOV 파일만 올릴 수 있어요.";
+    if (file.size > LIMITS.videoBytes) return "영상이 50MB보다 커요. 짧게 자르거나 화질을 낮춰서 다시 골라 주세요.";
   } else {
     if (!FILE_EXT.includes(fileExt(file.name))) return `이 파일은 올릴 수 없어요. ${FILE_EXT.join(", ")} 파일만 돼요.`;
     if (file.size > LIMITS.fileBytes) return "파일이 20MB보다 커요. 나눠서 올리거나 크기를 줄여 주세요.";
@@ -68,6 +72,7 @@ const PATHS = {
   smile: "M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2zM5.5 9.5s.9 1.5 2.5 1.5 2.5-1.5 2.5-1.5M6 6.5h.01M10 6.5h.01",
   clip: "M10.5 4.5 5.8 9.2a1.4 1.4 0 0 0 2 2l5-5a2.8 2.8 0 0 0-4-4l-5 5a4.2 4.2 0 0 0 6 6l4.2-4.2",
   image: "M2 3h12v10H2zM2 11l3.5-3.5 3 3 2-2L14 12M10.5 6.5h.01",
+  video: "M2 4h9v8H2zM11 7l3-2v6l-3-2",
   search: "M7 2.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9zM10.3 10.3 13.5 13.5",
   check: "M3 8.5 6.5 12 13 4.5",
   grip: "M6 3.5h.01M10 3.5h.01M6 8h.01M10 8h.01M6 12.5h.01M10 12.5h.01",
@@ -127,3 +132,9 @@ export function confirmBox({ title, text, ok = "지우기", danger = true }) {
 
 export const errorBox = (text, retry) => h("div", { class: "ss-alert ss-alert--error mb-error", role: "alert" },
   h("span", { text }), retry && h("button", { class: "ss-btn ss-btn--sm", type: "button", text: "다시 시도", onclick: retry }));
+
+/** 영상: 카드·글 보기·슬라이드쇼에 첫 장면을 미리보기로 보여 주고, 누르면 재생(#t=0.1 은 iPad·iPhone 에서도 첫 장면이 보이게) */
+export function videoEl(v, { cls = "mb-video", label = "" } = {}) {
+  return h("video", { class: cls, src: v.url ? `${v.url}#t=0.1` : null, controls: true, preload: "metadata", playsinline: true,
+    "aria-label": label || `영상 ${v.name || ""}`.trim() });
+}

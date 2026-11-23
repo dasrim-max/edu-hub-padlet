@@ -289,7 +289,7 @@
 /* 메뉴 버튼만 있는 카드 윗줄은 오른쪽 위에 띄워서 자리를 차지하지 않게 */
 .mb-card__top:not(:has(.mb-card__badge, .mb-card__grip)) { position: absolute; top: 6px; right: 6px; margin: 0; min-height: 0; }
 .mb-card__top + :is(.mb-card__title, .mb-card__body) { padding-right: 28px; }
-.mb-card__top:not(:has(.mb-card__badge, .mb-card__grip)) + .mb-card__img { margin-top: 30px; }
+.mb-card__top:not(:has(.mb-card__badge, .mb-card__grip)) + :is(.mb-card__img, .mb-card__video) { margin-top: 30px; }
 .mb-dlg :is(h3, p) { margin: 0; }
 .mb-detail__img { max-height: 38dvh; }
 .mb-tools .ss-btn { flex: 1 1 120px; }
@@ -350,3 +350,11 @@
 .mb-card--big .mb-ccmts__more, .mb-card--big .mb-ccmt .mb-linkbtn { font-size: 16px; min-height: 44px; }
 .mb-card--big .mb-ccmts__input { height: 52px; font-size: 20px; }
 .mb-card--big .mb-ccmts__form .ss-btn { min-height: 52px; padding: 0 20px; font-size: 20px; }
+
+/* ---- 영상: 첫 장면이 미리보기로 보이고, 누르면 그 자리에서 재생 ---- */
+.mb-card__video, .mb-detail__video, .mb-attach__video { display: block; width: 100%; background: var(--ap-text); border-radius: calc(var(--as-rad, 12px) * .6); }
+.mb-card__video { max-height: 260px; }
+.mb-detail__video { max-height: 60dvh; border-radius: 12px; }
+.mb-attach__item--video { flex-wrap: wrap; }
+.mb-attach__video { width: 160px; height: 90px; object-fit: cover; }
+.mb-show__video { background: var(--ap-bg); }

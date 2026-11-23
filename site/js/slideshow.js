@@ -1,5 +1,5 @@
 // 슬라이드쇼: 글을 한 장씩 크게(프로젝터·TV용 검은 바탕). ← → 넘기기, Space 재생·멈춤, Esc 닫기
-import { h, fill, icon, iconBtn, fileSize } from "./common.js";
+import { h, fill, icon, iconBtn, fileSize, videoEl } from "./common.js";
 
 const SPEEDS = [3, 5, 8, 10];
 
@@ -26,13 +26,17 @@ export function openSlideshow({ posts, board, showName, start = 0 }) {
     count.textContent = `${i + 1} / ${posts.length}`;
     fill(slide,
       p.image && h("img", { class: "mb-show__img", src: p.image, alt: p.title ? `${p.title} 사진` : "올린 사진" }),
+      p.video && videoEl(p.video, { cls: "mb-show__img mb-show__video" }),
       h("div", { class: "mb-show__text" },
         p.title && h("h2", { class: "mb-show__title", text: p.title }),
         p.body && h("p", { class: "mb-show__body", text: p.body }),
         p.file && h("p", { class: "mb-show__file" }, icon("clip"), ` ${p.file.name} · ${fileSize(p.file.size)}`),
         showName(p) && h("p", { class: "mb-show__author", text: showName(p) })));
   }
-  function go(d) { i = (i + d + posts.length) % posts.length; draw(); if (playing) restart(); }
+  // 영상을 재생하는 동안은 자동으로 넘기지 않고, 끝나면 다시 넘겨요
+  slide.addEventListener("play", () => clearInterval(timer), true);
+  slide.addEventListener("ended", () => { if (playing) restart(); }, true);
+  function go(d) { slide.querySelector("video")?.pause(); i = (i + d + posts.length) % posts.length; draw(); if (playing) restart(); }
   function restart() { clearInterval(timer); timer = setInterval(() => go(1), sec * 1000); }
   function setPlay(on) {
     playing = on;
