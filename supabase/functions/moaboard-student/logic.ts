@@ -3,10 +3,11 @@
 
 export const APP_ENTRY_ID = "00000000-0000-4000-8000-00000000a99a";
 export const BUCKET = "moaboard-files";
-export const LIMITS = { title: 60, body: 1000, comment: 200, fileName: 200, imageBytes: 10 * 1024 * 1024, fileBytes: 20 * 1024 * 1024,
+export const LIMITS = { title: 60, body: 1000, comment: 200, fileName: 200, imageBytes: 10 * 1024 * 1024, fileBytes: 20 * 1024 * 1024, videoBytes: 50 * 1024 * 1024,
   postsPerStudent: 30, commentsPerStudent: 100 };
 export const REACTIONS = ["like", "👍", "😊", "😮", "👏", "🤔"] as const;
 export const IMAGE_EXT = ["png", "jpg", "jpeg", "gif", "webp"];
+export const VIDEO_EXT = ["mp4", "webm", "mov", "m4v"];
 export const FILE_EXT = ["pdf", "hwp", "hwpx", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "zip"];
 
 export const isUuid = (v: unknown): v is string => typeof v === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
@@ -18,14 +19,21 @@ const bad = (error: string, message: string): Err => ({ error, message });
 
 /** 글 내용 검사. 통과하면 정리된 값, 아니면 오류 */
 export function checkPost(b: Record<string, unknown>, own: { teacherId: string; boardId: string; studentId: string }, allowFiles: boolean):
-  { ok: true; v: { title: string; body: string; image_path: string | null; file_path: string | null; file_name: string | null; file_size: number | null; section_id: string | null } } | Err {
+  { ok: true; v: { title: string; body: string; image_path: string | null; file_path: string | null; file_name: string | null; file_size: number | null;
+    video_path: string | null; video_name: string | null; video_size: number | null; section_id: string | null } } | Err {
   const title = clean(b.title), body = clean(b.body);
   if (title.length > LIMITS.title) return bad("bad_title", `제목은 ${LIMITS.title}자까지 쓸 수 있어요.`);
   if (body.length > LIMITS.body) return bad("bad_body", `내용은 ${LIMITS.body}자까지 쓸 수 있어요.`);
   const image_path = b.image_path == null || b.image_path === "" ? null : String(b.image_path);
   const file = b.file && typeof b.file === "object" ? b.file as Record<string, unknown> : null;
   const file_path = file?.path ? String(file.path) : null;
-  if ((image_path || file_path) && !allowFiles) return bad("no_files", "이 보드에는 사진·파일을 올릴 수 없어요.");
+  const video = b.video && typeof b.video === "object" ? b.video as Record<string, unknown> : null;
+  const video_path = video?.path ? String(video.path) : null;
+  if ((image_path || file_path || video_path) && !allowFiles) return bad("no_files", "이 보드에는 사진·파일을 올릴 수 없어요.");
+  if (video_path && !ownPath(video_path, own, VIDEO_EXT)) return bad("bad_file", "영상을 다시 골라 주세요.");
+  const video_name = video_path ? (clean(video?.name).replace(/[\\/\u0000-\u001f]/g, "_").slice(0, LIMITS.fileName) || "영상") : null;
+  const vn = Number(video?.size);
+  const video_size = video_path && Number.isFinite(vn) && vn >= 0 && vn <= LIMITS.videoBytes ? Math.round(vn) : null;
   if (image_path && !ownPath(image_path, own, IMAGE_EXT)) return bad("bad_file", "사진을 다시 골라 주세요.");
   let file_name: string | null = null, file_size: number | null = null;
   if (file_path) {
@@ -34,9 +42,9 @@ export function checkPost(b: Record<string, unknown>, own: { teacherId: string; 
     const n = Number(file?.size);
     file_size = Number.isFinite(n) && n >= 0 && n <= LIMITS.fileBytes ? Math.round(n) : null;
   }
-  if (!title && !body && !image_path && !file_path) return bad("empty", "제목이나 내용을 적어 주세요.");
+  if (!title && !body && !image_path && !file_path && !video_path) return bad("empty", "제목이나 내용을 적어 주세요.");
   const section_id = isUuid(b.section_id) ? b.section_id : null;
-  return { ok: true, v: { title, body, image_path, file_path, file_name, file_size, section_id } };
+  return { ok: true, v: { title, body, image_path, file_path, file_name, file_size, video_path, video_name, video_size, section_id } };
 }
 
 /** 학생이 올린 파일은 <교사>/<보드>/<학생>/<무작위>.<확장자> 경로만 받아요(다른 사람 파일을 붙일 수 없게) */
@@ -47,14 +55,15 @@ export function ownPath(path: string, own: { teacherId: string; boardId: string;
 
 /** 올릴 파일 검사 → 저장 경로 */
 export function uploadPath(b: Record<string, unknown>, own: { teacherId: string; boardId: string; studentId: string }, id: string): { ok: true; path: string } | Err {
-  const kind = b.kind === "image" ? "image" : "file";
+  const kind = b.kind === "image" ? "image" : b.kind === "video" ? "video" : "file";
   const ext = extOf(clean(b.name));
   const size = Number(b.size);
   if (kind === "image" && !IMAGE_EXT.includes(ext)) return bad("bad_type", "사진은 PNG, JPG, GIF, WEBP 파일만 올릴 수 있어요.");
+  if (kind === "video" && !VIDEO_EXT.includes(ext)) return bad("bad_type", "영상은 MP4, WEBM, MOV 파일만 올릴 수 있어요.");
   if (kind === "file" && !FILE_EXT.includes(ext)) return bad("bad_type", `이 파일은 올릴 수 없어요. ${FILE_EXT.join(", ")} 파일만 돼요.`);
-  const max = kind === "image" ? LIMITS.imageBytes : LIMITS.fileBytes;
+  const max = kind === "image" ? LIMITS.imageBytes : kind === "video" ? LIMITS.videoBytes : LIMITS.fileBytes;
   if (!Number.isFinite(size) || size <= 0) return bad("bad_size", "빈 파일은 올릴 수 없어요.");
-  if (size > max) return bad("too_big", kind === "image" ? "사진이 10MB보다 커요. 크기를 줄여서 다시 골라 주세요." : "파일이 20MB보다 커요. 나눠서 올리거나 크기를 줄여 주세요.");
+  if (size > max) return bad("too_big", kind === "image" ? "사진이 10MB보다 커요. 크기를 줄여서 다시 골라 주세요." : kind === "video" ? "영상이 50MB보다 커요. 짧게 자르거나 화질을 낮춰서 다시 골라 주세요." : "파일이 20MB보다 커요. 나눠서 올리거나 크기를 줄여 주세요.");
   return { ok: true, path: `${own.teacherId}/${own.boardId}/${own.studentId}/${id}.${ext === "jpeg" ? "jpg" : ext}` };
 }
 
@@ -63,6 +72,7 @@ export type Board = { id: string; title: string; description: string; layout: st
   bg_preset?: string | null; bg_image_path?: string | null; card_color?: string | null; comments_inline?: boolean };
 export type PostRow = { id: string; board_id: string; section_id: string | null; position: number; student_id: string | null; by_teacher: boolean;
   author_name: string; title: string; body: string; image_path: string | null; file_path: string | null; file_name: string | null; file_size: number | null;
+  video_path?: string | null; video_name?: string | null; video_size?: number | null;
   status: string; created_at: string; moaboard_comments?: CommentRow[]; moaboard_reactions?: { actor_id: string; kind: string }[] };
 export type CommentRow = { id: string; student_id: string | null; by_teacher: boolean; author_name: string; body: string; created_at: string };
 
@@ -82,6 +92,7 @@ export function shapeBoard(board: Board, sections: { id: string; title: string; 
       author: name(p), by_teacher: p.by_teacher, mine: !p.by_teacher && p.student_id === me, status: p.status,
       image: p.image_path ? urls.get(p.image_path) ?? null : null, image_path: p.student_id === me ? p.image_path : null,
       file: p.file_path ? { name: p.file_name, size: p.file_size ?? 0, url: urls.get(p.file_path) ?? null, path: p.student_id === me ? p.file_path : null } : null,
+      video: p.video_path ? { name: p.video_name ?? "영상", size: p.video_size ?? 0, url: urls.get(p.video_path) ?? null, path: p.student_id === me ? p.video_path : null } : null,
       created_at: p.created_at,
       likes: rx.filter((r) => r.kind === "like").length, liked: rx.some((r) => r.kind === "like" && r.actor_id === me),
       emojis, my_emojis: rx.filter((r) => r.kind !== "like" && r.actor_id === me).map((r) => r.kind),

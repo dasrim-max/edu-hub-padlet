@@ -54,11 +54,11 @@ export function createStudentApi({ me, contentId, boardId = null }) {
 
     /** 서버가 만든 내 폴더 주소로 바로 올려요(10분 유효). 미리보기는 이 기기의 파일로 */
     async uploadFile(file, kind) {
-      const d = await call("upload_url", { kind: kind === "image" ? "image" : "file", name: file.name, size: file.size });
+      const d = await call("upload_url", { kind: kind === "image" || kind === "video" ? kind : "file", name: file.name, size: file.size });
       const form = new FormData();
       form.append("cacheControl", "3600");
       form.append("", file);
-      const res = await fetch(d.upload_url, { method: "PUT", body: form, headers: { "x-upsert": "false" }, signal: AbortSignal.timeout(120e3) }).catch(() => null);
+      const res = await fetch(d.upload_url, { method: "PUT", body: form, headers: { "x-upsert": "false" }, signal: AbortSignal.timeout(kind === "video" ? 600e3 : 120e3) }).catch(() => null);
       if (!res?.ok) throw fail({ status: 0, data: { message: "올리지 못했어요. 인터넷 연결을 확인하고 다시 골라 주세요." } });
       return { name: file.name, size: file.size, path: d.path, url: URL.createObjectURL(file) };
     },
@@ -72,4 +72,5 @@ export function createStudentApi({ me, contentId, boardId = null }) {
 }
 
 const payload = (v) => ({ title: v.title, body: v.body, section_id: v.section_id ?? null, image_path: v.image_path ?? null,
-  file: v.file?.path ? { path: v.file.path, name: v.file.name, size: v.file.size } : null });
+  file: v.file?.path ? { path: v.file.path, name: v.file.name, size: v.file.size } : null,
+  video: v.video?.path ? { path: v.video.path, name: v.video.name, size: v.video.size } : null });

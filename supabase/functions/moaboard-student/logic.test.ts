@@ -27,6 +27,18 @@ test("글 검사: 빈 글·긴 글·파일 끈 보드", () => {
   assert.ok("v" in f && f.v.file_name === ".._보고서.pdf" && f.v.file_size === 1234);
 });
 
+test("영상: 종류·크기 검사, 내 폴더 경로만, 영상만 있는 글도 됨", () => {
+  assert.deepEqual(uploadPath({ kind: "video", name: "발표.MOV", size: 30 * 1024 * 1024 }, own, R), { ok: true, path: `${T}/${B}/${ME}/${R}.mov` });
+  assert.equal((uploadPath({ kind: "video", name: "a.avi", size: 10 }, own, R) as { error: string }).error, "bad_type");
+  assert.equal((uploadPath({ kind: "video", name: "a.mp4", size: 51 * 1024 * 1024 }, own, R) as { error: string }).error, "too_big");
+  const ok = checkPost({ video: { path: `${T}/${B}/${ME}/${R}.mp4`, name: "발표.mp4", size: 1234 } }, own, true);
+  assert.ok("v" in ok && ok.v.video_path === `${T}/${B}/${ME}/${R}.mp4` && ok.v.video_name === "발표.mp4" && ok.v.video_size === 1234);
+  assert.equal((checkPost({ video: { path: `${T}/${B}/${YOU}/${R}.mp4` } }, own, true) as { error: string }).error, "bad_file", "다른 학생 영상");
+  assert.equal((checkPost({ video: { path: `${T}/${B}/${ME}/${R}.mp4` } }, own, false) as { error: string }).error, "no_files");
+  const out = shapeBoard(board(), [], [row({ id: "v", video_path: `${T}/${B}/${YOU}/${R}.mp4`, video_name: "v.mp4", video_size: 9 })], ME, new Map([[`${T}/${B}/${YOU}/${R}.mp4`, "https://signed/v"]]));
+  assert.deepEqual(out.posts[0].video, { name: "v.mp4", size: 9, url: "https://signed/v", path: null });
+});
+
 test("올릴 파일: 종류·크기 검사 후 내 폴더 경로", () => {
   const ok = uploadPath({ kind: "image", name: "사진.JPEG", size: 1000 }, own, R);
   assert.deepEqual(ok, { ok: true, path: `${T}/${B}/${ME}/${R}.jpg` });

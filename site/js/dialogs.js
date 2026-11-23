@@ -1,5 +1,5 @@
 // 팝업: 보드 만들기·설정, 글쓰기·고치기, 글 자세히 보기(댓글)
-import { h, put, fill, modal, icon, LAYOUTS, LIMITS, EMOJIS, checkFile, fileSize, timeAgo, confirmBox, toast } from "./common.js";
+import { h, put, fill, modal, icon, LAYOUTS, LIMITS, EMOJIS, VIDEO_EXT, checkFile, fileExt, fileSize, timeAgo, confirmBox, toast, videoEl } from "./common.js";
 import { BG_PRESETS, CARD_COLORS } from "./board-style.js";
 
 // ---------------------------------------------------------------------------
@@ -12,7 +12,7 @@ const PERMS = [
   ["comments_inline", "댓글을 글 아래에 바로 보여요", "끄면 댓글 수만 보이고, 눌러야 열려요"],
   ["allow_like", "좋아요", ""],
   ["allow_emoji", "이모지 반응", ""],
-  ["allow_files", "사진·파일 올리기", "사진 10MB, 파일 20MB까지"],
+  ["allow_files", "사진·영상·파일 올리기", "사진 10MB, 영상 50MB, 파일 20MB까지"],
   ["show_names", "친구 이름 보이기", "끄면 학생 화면에는 이름 없이 보여요(선생님은 늘 보여요)"],
 ];
 export const BOARD_DEFAULTS = { layout: "wall", needs_approval: false, allow_post: true, allow_comments: true,
@@ -159,36 +159,46 @@ export function openCompose({ post = null, sections = [], sectionId = null, allo
     sec.value = post?.section_id ?? sectionId ?? sections[0].id;
   }
 
-  // 사진·파일 (각각 하나)
-  let image = post?.image ? { url: post.image, path: post.image_path ?? null } : null, file = post?.file || null, busy = false;
+  // 사진·영상·파일 (각각 하나)
+  let image = post?.image ? { url: post.image, path: post.image_path ?? null } : null, file = post?.file || null, video = post?.video || null, busy = false;
   const attach = h("div", { class: "mb-attach" });
   const pickImg = h("input", { type: "file", accept: "image/png,image/jpeg,image/gif,image/webp", hidden: true });
   const pickFile = h("input", { type: "file", hidden: true });
+  const pickVideo = h("input", { type: "file", accept: "video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v", hidden: true });
   const drawAttach = () => fill(attach,
     image && h("div", { class: "mb-attach__item" }, h("img", { src: image.url, alt: "올릴 사진 미리보기" }),
       h("button", { class: "ss-btn ss-btn--sm", type: "button", text: "사진 빼기", onclick: () => { image = null; drawAttach(); } })),
+    video && h("div", { class: "mb-attach__item mb-attach__item--video" }, videoEl(video, { cls: "mb-attach__video", label: "올릴 영상 미리보기" }),
+      h("span", { text: `${video.name || "영상"} · ${fileSize(video.size || 0)}` }),
+      h("button", { class: "ss-btn ss-btn--sm", type: "button", text: "영상 빼기", onclick: () => { video = null; drawAttach(); } })),
     file && h("div", { class: "mb-attach__item mb-attach__item--file" }, icon("clip"), h("span", { text: `${file.name} · ${fileSize(file.size)}` }),
       h("button", { class: "ss-btn ss-btn--sm", type: "button", text: "파일 빼기", onclick: () => { file = null; drawAttach(); } })));
-  const onPick = (kind) => async (e) => {
+  const onPick = (pickKind) => async (e) => {
+    let kind = pickKind;
     const f = e.target.files?.[0]; e.target.value = "";
     if (!f) return;
+    if (kind === "file" && VIDEO_EXT.includes(fileExt(f.name))) kind = "video";   // "파일"로 영상을 골라도 영상으로
     const bad = checkFile(f, kind);
     if (bad) return say(bad);
-    say(""); busy = true; send.disabled = true; send.textContent = "올리는 중…";
+    say(""); busy = true; send.disabled = true; send.textContent = kind === "video" ? "영상 올리는 중…" : "올리는 중…";
     try {
       const up = await upload(f, kind);
-      if (kind === "image") image = { url: up.url, path: up.path }; else file = { name: up.name, size: up.size, url: up.url, path: up.path };
+      if (kind === "image") image = { url: up.url, path: up.path };
+      else if (kind === "video") video = { name: up.name, size: up.size, url: up.url, path: up.path };
+      else file = { name: up.name, size: up.size, url: up.url, path: up.path };
       drawAttach();
     } catch (e) { say(e?.userMessage || "올리지 못했어요. 인터넷 연결을 확인하고 다시 골라 주세요."); }
     busy = false; send.disabled = false; send.textContent = post ? "고치기" : "붙이기";
   };
   pickImg.addEventListener("change", onPick("image"));
   pickFile.addEventListener("change", onPick("file"));
+  pickVideo.addEventListener("change", onPick("video"));
   drawAttach();
   const tools = allowFiles && h("div", { class: "mb-tools" },
     h("button", { class: "ss-btn ss-btn--ghost" + (student ? " ss-btn--lg" : ""), type: "button", onclick: () => pickImg.click() }, icon("image"), " 사진"),
+    h("button", { class: "ss-btn ss-btn--ghost" + (student ? " ss-btn--lg" : ""), type: "button", onclick: () => pickVideo.click() }, icon("video"), " 영상"),
     h("button", { class: "ss-btn ss-btn--ghost" + (student ? " ss-btn--lg" : ""), type: "button", onclick: () => pickFile.click() }, icon("clip"), " 파일"),
-    pickImg, pickFile);
+    pickImg, pickVideo, pickFile);
 
   put(m.body, err,
     notice && h("div", { class: "ss-alert ss-alert--warn", text: notice }),
@@ -201,8 +211,8 @@ export function openCompose({ post = null, sections = [], sectionId = null, allo
   send.onclick = async () => {
     if (busy) return;
     const v = { title: title.value.trim(), body: body.value.trim(), section_id: sec ? sec.value : (post?.section_id ?? sectionId ?? null),
-      image: image?.url || null, image_path: image?.path ?? null, file };
-    if (!v.title && !v.body && !v.image && !v.file) { say("제목이나 내용을 적어 주세요."); body.focus(); return; }
+      image: image?.url || null, image_path: image?.path ?? null, file, video };
+    if (!v.title && !v.body && !v.image && !v.file && !v.video) { say("제목이나 내용을 적어 주세요."); body.focus(); return; }
     send.disabled = true; send.textContent = "붙이는 중…";
     const bad = await onSubmit(v);
     if (bad) { say(bad); send.disabled = false; send.textContent = post ? "고치기" : "붙이기"; return; }
@@ -240,6 +250,7 @@ export function openPostDetail({ get, board, student = false, showName, actions,
     if (!p) { m.close(); toast("글이 지워졌어요"); return; }
     fill(view,
       p.image && h("img", { class: "mb-detail__img", src: p.image, alt: p.title ? `${p.title} 사진` : "올린 사진" }),
+      p.video && videoEl(p.video, { cls: "mb-detail__video" }),
       p.title && h("h3", { class: "mb-detail__title", text: p.title }),
       p.body && h("p", { class: "mb-detail__body", text: p.body }),
       p.file && fileChip(p.file),

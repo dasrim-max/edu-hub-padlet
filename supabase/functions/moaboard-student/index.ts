@@ -7,7 +7,7 @@
 //   post / edit / delete          글 쓰기·고치기·지우기(고치기·지우기는 내 글만)
 //   comment / uncomment           댓글 쓰기·지우기(내 댓글만)
 //   react       좋아요·이모지 켜고 끄기
-//   upload_url  사진·파일을 올릴 주소(내 폴더, 10분 유효)
+//   upload_url  사진·파일·영상을 올릴 주소(내 폴더, 10분 유효)
 // 쓰기 action 은 바뀐 보드(board 와 같은 모양)를 돌려준다.
 import { json } from "../_shared/common.ts";
 import { studentRequest } from "../_shared/student-app.ts";
@@ -15,7 +15,7 @@ import { APP_ENTRY_ID, BUCKET, LIMITS, REACTIONS, checkPost, clean, isUuid, shap
 
 const SLUG = "moaboard";
 const BOARD_COLS = "id, teacher_id, title, description, layout, needs_approval, allow_post, allow_comments, allow_like, allow_emoji, allow_files, show_names, comments_inline, bg_preset, bg_image_path, card_color, updated_at";
-const POST_COLS = "id, board_id, section_id, position, student_id, by_teacher, author_name, title, body, image_path, file_path, file_name, file_size, status, created_at, " +
+const POST_COLS = "id, board_id, section_id, position, student_id, by_teacher, author_name, title, body, image_path, file_path, file_name, file_size, video_path, video_name, video_size, status, created_at, " +
   "moaboard_comments(id, student_id, by_teacher, author_name, body, created_at), moaboard_reactions(actor_id, kind)";
 const ACTIONS = ["boards", "board", "post", "edit", "delete", "comment", "uncomment", "react", "upload_url"];
 
@@ -44,7 +44,7 @@ Deno.serve(async (req: Request) => {
 
   async function myPost(id: unknown) {
     if (!isUuid(id)) return null;
-    const { data } = await admin.from("moaboard_posts").select("id, student_id, by_teacher, image_path, file_path, status")
+    const { data } = await admin.from("moaboard_posts").select("id, student_id, by_teacher, image_path, file_path, video_path, status")
       .eq("id", id).eq("board_id", board!.id).maybeSingle();
     return data && !data.by_teacher && data.student_id === me ? data : null;
   }
@@ -92,13 +92,13 @@ Deno.serve(async (req: Request) => {
       if (!p) return fail(404, "not_found", "고칠 수 있는 글이 아니에요.");
       const { error } = await admin.from("moaboard_posts").update({ ...c.v, section_id, status }).eq("id", p.id);
       if (error) return fail(500, "server_error", "고치지 못했어요. 잠시 후 다시 해 주세요.");
-      await removeFiles([p.image_path !== c.v.image_path ? p.image_path : null, p.file_path !== c.v.file_path ? p.file_path : null]);
+      await removeFiles([p.image_path !== c.v.image_path ? p.image_path : null, p.file_path !== c.v.file_path ? p.file_path : null, p.video_path !== c.v.video_path ? p.video_path : null]);
     }
   } else if (action === "delete") {
     const p = await myPost(b.post_id);
     if (!p) return fail(404, "not_found", "지울 수 있는 글이 아니에요.");
     await admin.from("moaboard_posts").delete().eq("id", p.id);
-    await removeFiles([p.image_path, p.file_path]);
+    await removeFiles([p.image_path, p.file_path, p.video_path]);
   } else if (action === "comment") {
     if (!board.allow_comments) return fail(403, "no_comments", "이 보드에는 댓글을 쓸 수 없어요.");
     const body = clean(b.body);
@@ -132,7 +132,7 @@ Deno.serve(async (req: Request) => {
     admin.from("moaboard_posts").select(POST_COLS).eq("board_id", board.id).or(`status.eq.visible,student_id.eq.${me}`).order("created_at").limit(500),
   ]);
   const posts = (rows ?? []) as unknown as PostRow[];
-  const paths = [...new Set([board.bg_image_path as string | null, ...posts.flatMap((p) => [p.image_path, p.file_path])].filter((p): p is string => !!p))];
+  const paths = [...new Set([board.bg_image_path as string | null, ...posts.flatMap((p) => [p.image_path, p.file_path, p.video_path ?? null])].filter((p): p is string => !!p))];
   const urls = new Map<string, string>();
   if (paths.length) {
     const { data } = await admin.storage.from(BUCKET).createSignedUrls(paths, 3600);
