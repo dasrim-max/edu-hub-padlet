@@ -1,8 +1,8 @@
 // 교사용 저장소: 로그인한 교사의 Supabase 연결(hub.sb)로 읽고 쓴다. 권한은 DB(RLS)가 막는다.
 // 화면(board.js·list.js)이 부르는 함수 이름은 학생용(api-student.js)과 같다.
-import { SLUG, fileExt } from "./common.js";
+import { SLUG } from "./common.js";
+import { createFiles } from "./files.js";
 
-const BUCKET = "moaboard-files";
 const BOARD_COLS = "id, title, description, layout, needs_approval, allow_post, allow_comments, allow_like, allow_emoji, allow_files, show_names, comments_inline, bg_preset, bg_image_path, card_color, folder_id, favorite, deleted_at, last_opened_at, created_at, updated_at";
 const POST_COLS = "id, board_id, section_id, position, student_id, by_teacher, author_name, title, body, image_path, file_path, file_name, file_size, video_path, video_name, video_size, status, created_at, " +
   "moaboard_comments(id, by_teacher, author_name, body, created_at), moaboard_reactions(actor_id, kind)";
@@ -14,20 +14,9 @@ export function createTeacherApi(hub) {
   const sb = hub.sb, me = hub.user.id;
   let current = null;          // 지금 연 보드 id
   let last = null;             // 마지막으로 읽은 보드(반응 켜고 끄기·옮기기에 씀)
-  const urlCache = new Map();  // 파일 경로 → { url, until }
-
-  async function signed(paths) {
-    const now = Date.now(), need = [...new Set(paths)].filter((p) => p && !(urlCache.get(p)?.until > now));
-    if (need.length) {
-      const { data } = await sb.storage.from(BUCKET).createSignedUrls(need, 3600);
-      for (const u of data ?? []) if (u.signedUrl) urlCache.set(u.path, { url: u.signedUrl, until: now + 50 * 60e3 });
-    }
-    return (p) => (p ? urlCache.get(p)?.url ?? null : null);
-  }
-  const removeFiles = async (paths) => {
-    const list = paths.filter(Boolean);
-    if (list.length) await sb.storage.from(BUCKET).remove(list);   // 학생 파일도 교사 폴더(<교사 id>/…) 아래라 교사가 지울 수 있어요
-  };
+  const files = createFiles(hub);   // 사진·영상·파일(쌤허브 공통 파일 모듈 + 예전 파일)
+  const signed = (paths) => files.urls(paths);
+  const removeFiles = (paths) => files.remove(paths.filter(Boolean));
   const subs = new Set();
   let kickT = null;
   /** 바꾼 뒤 화면을 바로 다시 그려요(실시간 알림을 기다리지 않음). 여러 번 불러도 한 번만 */
@@ -98,6 +87,7 @@ export function createTeacherApi(hub) {
       const rows = must(await sb.from("moaboard_posts").select("image_path, file_path, video_path").eq("board_id", id));
       const bg = must(await sb.from("moaboard_boards").select("bg_image_path").eq("id", id).maybeSingle());
       await removeFiles([bg?.bg_image_path, ...rows.flatMap((p) => [p.image_path, p.file_path, p.video_path])]);
+      await files.removeBoard(id);   // 올리고 글에 붙이지 않은 파일까지(사용량에서 빠지게)
       must(await sb.from("moaboard_boards").delete().eq("id", id));
       await hub.removeActivity({ appSlug: SLUG, contentId: id });
     },
@@ -186,12 +176,10 @@ export function createTeacherApi(hub) {
     async deleteComment(_postId, commentId) { must(await sb.from("moaboard_comments").delete().eq("id", commentId)); changed(); },
 
     // ---- 파일 ----
-    async uploadFile(file) {
+    /** 올리기: kind 는 image·video·file, shrink 는 사진 줄이기 크기(배경은 { max: 1920 }) */
+    async uploadFile(file, kind, shrink) {
       if (!current) throw new Error("보드를 먼저 열어 주세요");
-      const ext = fileExt(file.name) === "jpeg" ? "jpg" : fileExt(file.name);
-      const path = `${me}/${current}/t/${crypto.randomUUID()}.${ext}`;
-      must(await sb.storage.from(BUCKET).upload(path, file, { contentType: file.type || "application/octet-stream", upsert: false }));
-      return { name: file.name, size: file.size, path, url: URL.createObjectURL(file) };
+      return files.upload(file, { boardId: current, kind, shrink });
     },
 
     // ---- 실시간 반영: 이 보드의 바뀐 행이 오면 다시 읽어요(여러 개가 한꺼번에 오면 한 번만) ----

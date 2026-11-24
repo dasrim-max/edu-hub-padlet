@@ -11,7 +11,29 @@
 // 쓰기 action 은 바뀐 보드(board 와 같은 모양)를 돌려준다.
 import { json } from "../_shared/common.ts";
 import { studentRequest } from "../_shared/student-app.ts";
-import { APP_ENTRY_ID, BUCKET, LIMITS, REACTIONS, checkPost, clean, isUuid, shapeBoard, uploadPath, type Board, type PostRow } from "./logic.ts";
+import { FileError, issueUpload, removeFiles as removeHubFiles, signedUrls } from "../_shared/files.ts";
+import { APP, APP_ENTRY_ID, LEGACY_BUCKET, LIMITS, POLICY, REACTIONS, checkPost, clean, isHubPath, isUuid, shapeBoard, type Board, type PostRow } from "./logic.ts";
+
+// ── 파일 저장소: 새 경로(moaboard/…)는 쌤허브 공통 파일 모듈, 예전 경로는 moaboard-files 버킷(전환 기간에만) ──
+// 이 두 함수만 저장소를 안다. 예전 파일을 모두 옮기면 LEGACY 부분을 지운다.
+// deno-lint-ignore no-explicit-any
+async function fileUrls(admin: any, paths: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  const hub = paths.filter(isHubPath), legacy = paths.filter((p) => !isHubPath(p));
+  for (let i = 0; i < hub.length; i += 200) for (const [p, u] of await signedUrls(admin, hub.slice(i, i + 200))) out.set(p, u);
+  if (legacy.length) {   // LEGACY
+    const { data } = await admin.storage.from(LEGACY_BUCKET).createSignedUrls(legacy, 3600);
+    for (const u of data ?? []) if (u.path && u.signedUrl) out.set(u.path, u.signedUrl);
+  }
+  return out;
+}
+// deno-lint-ignore no-explicit-any
+async function removeAnyFiles(admin: any, paths: (string | null | undefined)[]): Promise<void> {
+  const list = [...new Set(paths.filter((p): p is string => !!p))];
+  const hub = list.filter(isHubPath), legacy = list.filter((p) => !isHubPath(p));
+  for (let i = 0; i < hub.length; i += 200) await removeHubFiles(admin, hub.slice(i, i + 200));
+  if (legacy.length) await admin.storage.from(LEGACY_BUCKET).remove(legacy);   // LEGACY
+}
 
 const SLUG = "moaboard";
 const BOARD_COLS = "id, teacher_id, title, description, layout, needs_approval, allow_post, allow_comments, allow_like, allow_emoji, allow_files, show_names, comments_inline, bg_preset, bg_image_path, card_color, updated_at";
@@ -58,18 +80,19 @@ Deno.serve(async (req: Request) => {
     const { data } = await admin.from("moaboard_sections").select("id").eq("id", id).eq("board_id", board!.id).maybeSingle();
     return data ? id : null;
   }
-  const removeFiles = (paths: (string | null | undefined)[]) => {
-    const list = paths.filter((p): p is string => !!p);
-    return list.length ? admin.storage.from(BUCKET).remove(list) : Promise.resolve();
-  };
+  const removeFiles = (paths: (string | null | undefined)[]) => removeAnyFiles(admin, paths);
 
   if (action === "upload_url") {
     if (!board.allow_post || !board.allow_files) return fail(403, "no_files", "이 보드에는 사진·파일을 올릴 수 없어요.");
-    const u = uploadPath(b, own, crypto.randomUUID());
-    if (!("path" in u)) return fail(400, u.error, u.message);
-    const { data, error } = await admin.storage.from(BUCKET).createSignedUploadUrl(u.path);
-    if (error || !data) return fail(500, "server_error", "올릴 준비를 하지 못했어요. 잠시 후 다시 해 주세요.");
-    return json(req, { ok: true, path: u.path, upload_url: data.signedUrl });
+    try {
+      // 공통 파일 모듈: 종류·크기·교사 사용량 한도를 확인하고 hub_files 에 기록한 뒤 올릴 주소를 준다
+      const up = await issueUpload({ admin, teacherId: s.teacher_id, appSlug: APP, contentId: board.id,
+        owner: { kind: "student", studentId: me }, kind: b.kind, name: b.name, size: b.size, policy: POLICY });
+      return json(req, { ok: true, ...up });
+    } catch (e) {
+      if (e instanceof FileError) return json(req, e.body(), e.status);
+      throw e;
+    }
   }
 
   if (action === "post" || action === "edit") {
@@ -133,10 +156,6 @@ Deno.serve(async (req: Request) => {
   ]);
   const posts = (rows ?? []) as unknown as PostRow[];
   const paths = [...new Set([board.bg_image_path as string | null, ...posts.flatMap((p) => [p.image_path, p.file_path, p.video_path ?? null])].filter((p): p is string => !!p))];
-  const urls = new Map<string, string>();
-  if (paths.length) {
-    const { data } = await admin.storage.from(BUCKET).createSignedUrls(paths, 3600);
-    for (const u of data ?? []) if (u.path && u.signedUrl) urls.set(u.path, u.signedUrl);
-  }
+  const urls = paths.length ? await fileUrls(admin, paths) : new Map<string, string>();
   return json(req, { ok: true, ...shapeBoard(board as unknown as Board, sections ?? [], posts, me, urls) });
 });
