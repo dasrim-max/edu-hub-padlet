@@ -50,7 +50,7 @@ if (q.get("as") === "student") {
       onDeleted: () => location.replace("./"),
       onTitle: (t) => (document.title = `${t} · ${APP_NAME}`) });
   } else {
-    await mountList({ root, api, bar, openNew: q.get("mode") === "new",
+    await mountList({ root, api, bar, openNew: q.get("mode") === "new", userName: "김하늘",
       onOpen: (id) => { location.href = `?c=${encodeURIComponent(id)}`; } });
   }
 }

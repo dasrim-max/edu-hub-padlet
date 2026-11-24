@@ -32,7 +32,7 @@ if (q.get("as") === "student") {
       onInvite: (b) => hub.openInvite({ appSlug: SLUG, contentId: b.id, title: b.title }),
       onDeleted: () => location.replace("./") });
   } else {
-    await mountList({ root, api, bar: hub.topbar, openNew: q.get("mode") === "new",
+    await mountList({ root, api, bar: hub.topbar, openNew: q.get("mode") === "new", userName: hub.profile?.display_name || "",
       onOpen: (id) => { location.href = `?c=${encodeURIComponent(id)}`; } });
   }
 }

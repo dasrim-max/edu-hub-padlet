@@ -32,13 +32,13 @@ Deno.serve(async (req: Request) => {
   if (action === "boards") {
     if (content_id !== APP_ENTRY_ID) return json(req, { error: "bad_request" }, 400);
     const { data } = await admin.from("moaboard_boards").select("id, title, layout, updated_at")
-      .eq("teacher_id", s.teacher_id).order("updated_at", { ascending: false }).limit(50);
+      .eq("teacher_id", s.teacher_id).is("deleted_at", null).order("updated_at", { ascending: false }).limit(50);
     return json(req, { ok: true, boards: data ?? [] });
   }
 
   const boardId = content_id === APP_ENTRY_ID ? b.board_id : content_id;
   if (!isUuid(boardId)) return json(req, { error: "bad_request" }, 400);
-  const { data: board } = await admin.from("moaboard_boards").select(BOARD_COLS).eq("id", boardId).eq("teacher_id", s.teacher_id).maybeSingle();
+  const { data: board } = await admin.from("moaboard_boards").select(BOARD_COLS).eq("id", boardId).eq("teacher_id", s.teacher_id).is("deleted_at", null).maybeSingle();
   if (!board) return fail(404, "not_found", "보드를 찾지 못했어요. 선생님께 확인해 주세요.");
   const own = { teacherId: s.teacher_id, boardId: board.id as string, studentId: me };
 

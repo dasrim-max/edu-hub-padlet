@@ -3,10 +3,10 @@
 import { SLUG, fileExt } from "./common.js";
 
 const BUCKET = "moaboard-files";
-const BOARD_COLS = "id, title, description, layout, needs_approval, allow_post, allow_comments, allow_like, allow_emoji, allow_files, show_names, comments_inline, bg_preset, bg_image_path, card_color, created_at, updated_at";
+const BOARD_COLS = "id, title, description, layout, needs_approval, allow_post, allow_comments, allow_like, allow_emoji, allow_files, show_names, comments_inline, bg_preset, bg_image_path, card_color, folder_id, favorite, deleted_at, last_opened_at, created_at, updated_at";
 const POST_COLS = "id, board_id, section_id, position, student_id, by_teacher, author_name, title, body, image_path, file_path, file_name, file_size, video_path, video_name, video_size, status, created_at, " +
   "moaboard_comments(id, by_teacher, author_name, body, created_at), moaboard_reactions(actor_id, kind)";
-const EDITABLE = ["title", "description", "layout", "needs_approval", "allow_post", "allow_comments", "allow_like", "allow_emoji", "allow_files", "show_names", "comments_inline", "bg_preset", "bg_image_path", "card_color"];
+const EDITABLE = ["title", "description", "layout", "needs_approval", "allow_post", "allow_comments", "allow_like", "allow_emoji", "allow_files", "show_names", "comments_inline", "bg_preset", "bg_image_path", "card_color", "folder_id", "favorite"];
 const pick = (o, keys) => Object.fromEntries(keys.filter((k) => k in o).map((k) => [k, o[k]]));
 const must = ({ data, error }) => { if (error) throw error; return data; };
 
@@ -38,7 +38,7 @@ export function createTeacherApi(hub) {
     // ---- 보드 ----
     async listBoards() {
       const [boards, counts] = await Promise.all([
-        sb.from("moaboard_boards").select(BOARD_COLS).order("updated_at", { ascending: false }).limit(200).then(must),
+        sb.from("moaboard_boards").select(BOARD_COLS).order("last_opened_at", { ascending: false }).limit(300).then(must),
         sb.rpc("moaboard_board_counts").then(must),
       ]);
       const by = new Map((counts ?? []).map((c) => [c.board_id, c]));
@@ -72,7 +72,10 @@ export function createTeacherApi(hub) {
         };
       });
       last = { board, sections, posts };
-      if (first) record(board);          // 열 때 "내가 만든 활동"의 최근 사용 시각
+      if (first) {                       // 열 때 "내가 만든 활동"·보드 목록의 최근 사용 시각
+        if (!board.deleted_at) record(board);
+        sb.from("moaboard_boards").update({ last_opened_at: new Date().toISOString() }).eq("id", id).then(() => {});
+      }
       return structuredClone(last);
     },
     async createBoard(v) {
@@ -98,6 +101,27 @@ export function createTeacherApi(hub) {
       must(await sb.from("moaboard_boards").delete().eq("id", id));
       await hub.removeActivity({ appSlug: SLUG, contentId: id });
     },
+
+    /** 보드 목록에서 즐겨찾기·폴더만 바꿀 때(설정 저장과 달리 칸을 만들지 않아요) */
+    async setBoardMeta(id, patch) { must(await sb.from("moaboard_boards").update(pick(patch, ["folder_id", "favorite"])).eq("id", id)); },
+    // ---- 휴지통: 보드를 휴지통으로 옮기면 학생은 들어올 수 없고 "내가 만든 활동"에서도 빠져요. 30일 뒤 영구 삭제 ----
+    async trashBoard(id) {
+      must(await sb.from("moaboard_boards").update({ deleted_at: new Date().toISOString() }).eq("id", id));
+      await hub.removeActivity({ appSlug: SLUG, contentId: id });
+    },
+    async restoreBoard(id) {
+      const b = must(await sb.from("moaboard_boards").update({ deleted_at: null }).eq("id", id).select(BOARD_COLS).single());
+      await record(b);
+    },
+
+    // ---- 폴더 ----
+    async listFolders() { return must(await sb.from("moaboard_folders").select("id, name, position").order("position").order("created_at")); },
+    async createFolder(name) {
+      const pos = (must(await sb.from("moaboard_folders").select("position").order("position", { ascending: false }).limit(1))[0]?.position ?? -1) + 1;
+      return must(await sb.from("moaboard_folders").insert({ teacher_id: me, name, position: pos }).select("id, name, position").single());
+    },
+    async renameFolder(id, name) { must(await sb.from("moaboard_folders").update({ name }).eq("id", id)); },
+    async deleteFolder(id) { must(await sb.from("moaboard_folders").delete().eq("id", id)); },   // 안의 보드는 DB 가 "폴더 없음"으로
 
     // ---- 칸 ----
     async addSection(boardId, title) {

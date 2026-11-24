@@ -18,45 +18,61 @@ const PERMS = [
 export const BOARD_DEFAULTS = { layout: "wall", needs_approval: false, allow_post: true, allow_comments: true,
   allow_like: true, allow_emoji: true, allow_files: true, show_names: true, comments_inline: true };
 
+/** 오른쪽 서랍(보드 설정 시안 A): 보드를 가리지 않고 옆에 열려서, 꾸미기를 바꾸면 뒤 화면에 바로 보여요. Esc 로 닫기 */
+function drawer({ title, onClose }) {
+  const tid = `mb-d-${Math.random().toString(36).slice(2, 8)}`;
+  const body = h("div", { class: "mb-drawer__body" });
+  const foot = h("footer", { class: "mb-drawer__foot" });
+  const last = document.activeElement;
+  const box = h("aside", { class: "mb-drawer mb-dlg", role: "dialog", "aria-labelledby": tid },
+    h("header", { class: "mb-drawer__head" }, h("h2", { id: tid, text: title }),
+      h("button", { class: "mb-drawer__x", type: "button", "aria-label": "닫기 (Esc)", onclick: () => close() }, icon("close"))));
+  const onKey = (e) => { if (e.key === "Escape" && !document.querySelector(".ss-scrim:not([hidden])")) { e.stopPropagation(); close(); } };
+  function close() { box.remove(); removeEventListener("keydown", onKey, true); last?.focus?.(); onClose?.(); }
+  addEventListener("keydown", onKey, true);
+  document.querySelector(".mb-drawer")?.remove();   // 하나만
+  return { box, body, foot, close, mount: (tabs) => { box.append(tabs, body, foot); document.body.append(box); } };
+}
+
 /**
- * onSave(values) 가 오류 문구를 돌려주면 창에 보여 줘요. onDelete 가 있으면 "보드 지우기" 버튼.
+ * 보드 만들기·설정(오른쪽 서랍 + 위쪽 탭). 탭마다 스크롤 없이 한 화면에 들어가요.
+ * onSave(values) 가 오류 문구를 돌려주면 창에 보여 줘요. onDelete 가 있으면 고급 탭에 "휴지통으로 옮기기".
  * upload(file) 이 있으면 배경 사진을 고를 수 있어요(보드를 만든 뒤 설정에서). onPreview(look) 는 고르는 동안 화면에 미리 보여 주기,
  * onClose 는 창을 닫을 때(저장하지 않았으면 원래 꾸미기로 되돌리기).
  */
 export function openBoardDialog({ board = null, onSave, onDelete, upload = null, onPreview = null, onClose = null }) {
   const v = { ...BOARD_DEFAULTS, ...(board || {}) };
-  const m = modal({ title: board ? "보드 설정" : "새 보드 만들기", wide: true, cls: "mb-dlg", onClose });
+  const m = drawer({ title: board ? "보드 설정" : "새 보드 만들기", onClose });
   const err = h("div", { class: "ss-alert ss-alert--error", role: "alert", hidden: true });
-  const title = h("input", { class: "ss-input", id: "mb-b-title", maxlength: LIMITS.boardTitle, value: v.title || "", placeholder: "예: 우리 반 환경 캠페인", required: true, "data-autofocus": true });
-  const desc = h("textarea", { class: "ss-input mb-textarea", id: "mb-b-desc", maxlength: LIMITS.boardDesc, rows: 2, placeholder: "학생에게 보일 안내 한 줄 (없어도 돼요)" });
+  const title = h("input", { class: "ss-input", id: "mb-b-title", maxlength: LIMITS.boardTitle, value: v.title || "", placeholder: "예: 우리 반 환경 캠페인", required: true });
+  const desc = h("textarea", { class: "ss-input mb-textarea", id: "mb-b-desc", maxlength: LIMITS.boardDesc, rows: 3, placeholder: "학생에게 보일 안내 한 줄 (없어도 돼요)" });
   desc.value = v.description || "";
 
-  const radioCards = (name, items, current, render) => h("div", { class: "mb-optcards", role: "radiogroup" },
+  const radioCards = (name, items, current, render) => h("div", { class: "mb-optcards mb-optcards--3", role: "radiogroup" },
     items.map(([val, label, sub]) => h("label", { class: "mb-optcard" },
       h("input", { type: "radio", name, value: val, checked: val === current }),
       h("span", { class: "mb-optcard__box" }, render(val), h("b", { text: label }), sub && h("small", { text: sub })))));
-
   const layoutPick = radioCards("mb-layout", LAYOUTS, v.layout, (val) =>
     h("span", { class: `mb-mini mb-mini--${val}`, "aria-hidden": "true" }, Array.from({ length: 6 }, () => h("i"))));
 
-  const perm = Object.fromEntries(PERMS.map(([k]) => [k, h("input", { type: "checkbox", checked: !!v[k] })]));
-  const permList = h("div", { class: "mb-perms" }, PERMS.map(([k, label, sub]) =>
-    h("label", { class: "ss-check mb-perm" }, perm[k], h("span", {}, h("b", { text: label }), sub && h("small", { text: sub })))));
-  // 글쓰기를 끄면 확인·파일 칸은 뜻이 없어서 흐리게
+  // 켜고 끄기 칸(학생 참여 · 반응·댓글 탭으로 나눠 놓음)
+  const perm = Object.fromEntries(PERMS.map(([k]) => [k, h("input", { type: "checkbox", role: "switch", class: "mb-switch", checked: !!v[k] })]));
+  const permGroup = (keys) => h("div", { class: "mb-setgroup" }, PERMS.filter(([k]) => keys.includes(k)).map(([k, label, sub]) =>
+    h("label", { class: "mb-setrow" }, h("span", {}, h("b", { text: label }), sub && h("small", { text: sub })), perm[k])));
   const syncPerm = () => {
     for (const k of ["needs_approval", "allow_files"]) perm[k].closest("label").classList.toggle("is-off", !perm.allow_post.checked);
     perm.comments_inline.closest("label").classList.toggle("is-off", !perm.allow_comments.checked);
   };
-  perm.allow_post.addEventListener("change", syncPerm); perm.allow_comments.addEventListener("change", syncPerm); syncPerm();
+  perm.allow_post.addEventListener("change", syncPerm); perm.allow_comments.addEventListener("change", syncPerm);
 
-  // ---- 꾸미기: 배경(기본 · 무늬 · 그라데이션 · 사진) + 카드 색 ----
+  // ---- 꾸미기: 배경(무늬 · 그라데이션 · 사진) + 카드 색 ----
   let photo = v.bg_image_path ? { path: v.bg_image_path, url: v.bg_image || null } : null;
   const startBg = v.bg_image_path ? "photo" : v.bg_preset || "";
-  const bgOpt = (id, label, inner) => h("label", { class: "mb-swopt" },
+  const bgOpt = (id, label, inner) => h("label", { class: "mb-swopt", title: label },
     h("input", { type: "radio", name: "mb-bg", value: id, checked: id === startBg, "aria-label": label }),
-    h("span", { class: "mb-bgsw", "data-bg": id === "photo" ? "" : id, "aria-hidden": "true" }, inner), h("span", { text: label }));
+    h("span", { class: "mb-bgsw", "data-bg": id === "photo" ? "" : id, "aria-hidden": "true" }, inner));
   const photoSw = () => photo?.url ? h("img", { src: photo.url, alt: "" }) : icon("image");
-  const photoOpt = upload && bgOpt("photo", photo ? "사진" : "사진 고르기", photoSw());
+  const photoOpt = upload && bgOpt("photo", "사진", photoSw());
   const pickPhoto = h("input", { type: "file", accept: "image/png,image/jpeg,image/gif,image/webp", hidden: true });
   const bgErr = h("p", { class: "ss-alert ss-alert--error", role: "alert", hidden: true });
   photoOpt?.addEventListener("click", (e) => { if (!photo) { e.preventDefault(); pickPhoto.click(); } });
@@ -71,23 +87,32 @@ export function openBoardDialog({ board = null, onSave, onDelete, upload = null,
     try {
       const up = await upload(await shrinkImage(f));
       photo = { path: up.path, url: up.url };
-      sw.replaceChildren(photoSw()); photoOpt.lastChild.textContent = "사진";
+      sw.replaceChildren(photoSw());
       photoOpt.querySelector("input").checked = true; preview();
     } catch (e) { sw.replaceChildren(photoSw()); bgErr.textContent = e?.userMessage || "사진을 올리지 못했어요. 다시 골라 주세요."; bgErr.hidden = false; }
   });
+  const groups = {
+    pattern: h("div", { class: "mb-swatches", role: "radiogroup", "aria-label": "배경 무늬" }, bgOpt("", "기본"), BG_PRESETS.filter((p) => p.group === "pattern").map((p) => bgOpt(p.id, p.label))),
+    gradient: h("div", { class: "mb-swatches", role: "radiogroup", "aria-label": "그라데이션", hidden: true }, BG_PRESETS.filter((p) => p.group === "gradient").map((p) => bgOpt(p.id, p.label))),
+    photo: h("div", { class: "mb-looks__photo", hidden: true },
+      upload ? [h("div", { class: "mb-swatches", role: "radiogroup", "aria-label": "배경 사진" }, photoOpt),
+        h("button", { class: "ss-btn ss-btn--sm", type: "button", onclick: () => pickPhoto.click() }, icon("image"), photo ? " 다른 사진 고르기" : " 배경 사진 올리기"), pickPhoto]
+        : h("p", { class: "mb-hint", text: "배경 사진은 보드를 만든 뒤 보드 설정에서 고를 수 있어요." })),
+  };
+  const startGroup = startBg === "photo" ? "photo" : BG_PRESETS.find((p) => p.id === startBg)?.group || "pattern";
+  const chips = h("div", { class: "mb-chips", role: "group", "aria-label": "배경 종류" }, [["pattern", "무늬"], ["gradient", "그라데이션"], ["photo", "사진"]].map(([g, l]) =>
+    h("button", { class: "mb-chip", type: "button", "aria-pressed": String(g === startGroup), text: l, onclick: (e) => {
+      chips.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === e.currentTarget)));
+      Object.entries(groups).forEach(([k, el]) => (el.hidden = k !== g));
+    } })));
+  Object.entries(groups).forEach(([k, el]) => (el.hidden = k !== startGroup));
   const looks = h("div", { class: "mb-looks" },
-    h("div", { class: "mb-swatches", role: "radiogroup", "aria-label": "배경" },
-      bgOpt("", "기본"), photoOpt,
-      BG_PRESETS.filter((p) => p.group === "pattern").map((p) => bgOpt(p.id, p.label)),
-      BG_PRESETS.filter((p) => p.group === "gradient").map((p) => bgOpt(p.id, p.label))),
-    pickPhoto, bgErr,
-    upload && h("button", { class: "ss-btn ss-btn--ghost ss-btn--sm mb-looks__photo", type: "button", onclick: () => pickPhoto.click() }, icon("image"), " 배경 사진 올리기"),
-    !upload && h("p", { class: "mb-hint", text: "배경 사진은 보드를 만든 뒤 보드 설정에서 고를 수 있어요." }),
+    h("span", { class: "mb-looks__group", text: "배경" }), chips, groups.pattern, groups.gradient, groups.photo, bgErr,
     h("span", { class: "mb-looks__group", text: "카드 색" }),
     h("div", { class: "mb-swatches mb-swatches--cards", role: "radiogroup", "aria-label": "카드 색" },
-      [{ id: "", label: "기본" }, ...CARD_COLORS].map((c) => h("label", { class: "mb-swopt" },
+      [{ id: "", label: "기본" }, ...CARD_COLORS].map((c) => h("label", { class: "mb-swopt", title: c.label },
         h("input", { type: "radio", name: "mb-card", value: c.id, checked: c.id === (v.card_color || ""), "aria-label": `카드 ${c.label}` }),
-        h("span", { class: "mb-cardsw", "data-card": c.id || null, "aria-hidden": "true", text: "가" }), h("span", { text: c.label })))));
+        h("span", { class: "mb-cardsw", "data-card": c.id || null, "aria-hidden": "true", text: "가" })))));
   const look = () => {
     const bg = m.body.querySelector('input[name="mb-bg"]:checked')?.value ?? "";
     const card = m.body.querySelector('input[name="mb-card"]:checked')?.value ?? "";
@@ -97,35 +122,55 @@ export function openBoardDialog({ board = null, onSave, onDelete, upload = null,
   const preview = () => onPreview?.(look());
   looks.addEventListener("change", (e) => { if (e.target.name === "mb-bg" || e.target.name === "mb-card") preview(); });
 
-  put(m.body, err,
-    h("div", { class: "mb-field" }, h("label", { class: "ss-label", for: "mb-b-title", text: "보드 이름" }), title),
-    h("div", { class: "mb-field" }, h("label", { class: "ss-label", for: "mb-b-desc", text: "안내" }), desc),
-    h("fieldset", { class: "mb-field" }, h("legend", { class: "ss-label", text: "배치" }), layoutPick),
-    h("fieldset", { class: "mb-field" }, h("legend", { class: "ss-label", text: "꾸미기" }), looks),
-    h("fieldset", { class: "mb-field" }, h("legend", { class: "ss-label", text: "학생이 할 수 있는 것" }), permList));
+  // ---- 탭 ----
+  const TABS = [
+    ["basic", "기본", [h("div", { class: "mb-field" }, h("label", { class: "ss-label", for: "mb-b-title", text: "보드 이름" }), title),
+      h("div", { class: "mb-field" }, h("label", { class: "ss-label", for: "mb-b-desc", text: "안내" }), desc)]],
+    ["look", "꾸미기", [looks]],
+    ["layout", "배치", [layoutPick, h("p", { class: "mb-hint", text: "칸·묶음은 보드 안에서 칸을 추가하고 이름을 바꿀 수 있어요." })]],
+    ["join", "학생 참여", [permGroup(["allow_post", "needs_approval", "allow_files", "show_names"])]],
+    ["react", "반응·댓글", [permGroup(["allow_comments", "comments_inline", "allow_like", "allow_emoji"])]],
+    onDelete && ["adv", "고급", [h("p", { class: "mb-hint", text: `휴지통으로 옮기면 학생이 들어올 수 없어요. 30일 안에 보드 목록의 휴지통에서 되살릴 수 있어요.` }),
+      h("button", { class: "ss-btn ss-btn--danger mb-drawer__trash", type: "button", onclick: async () => {
+        const ok = await confirmBox({ title: "휴지통으로 옮길까요?", text: `'${v.title}' 보드를 휴지통으로 옮겨요. 30일 안에 되살릴 수 있어요.`, ok: "휴지통으로" });
+        if (ok) { m.close(); onDelete(); }
+      } }, icon("trash"), " 휴지통으로 옮기기")]],
+  ].filter(Boolean);
+  const panes = Object.fromEntries(TABS.map(([k, , kids]) => [k, h("section", { class: "mb-drawer__pane", role: "tabpanel", id: `mb-pane-${k}`, hidden: k !== "basic" }, kids)]));
+  const tabs = h("nav", { class: "mb-drawer__tabs", role: "tablist", "aria-label": "설정" }, TABS.map(([k, label]) =>
+    h("button", { type: "button", role: "tab", "data-tab": k, "aria-controls": `mb-pane-${k}`, "aria-selected": String(k === "basic"), text: label })));
+  const pick = (k) => {
+    tabs.querySelectorAll("[role=tab]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === k)));
+    Object.entries(panes).forEach(([kk, el]) => (el.hidden = kk !== k));
+  };
+  tabs.addEventListener("click", (e) => { const b = e.target.closest("[role=tab]"); if (b) pick(b.dataset.tab); });
+  tabs.addEventListener("keydown", (e) => {   // ← → 로 탭 옮기기
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    const list = [...tabs.querySelectorAll("[role=tab]")], i = list.indexOf(document.activeElement);
+    if (i < 0) return;
+    const nx = list[(i + (e.key === "ArrowRight" ? 1 : -1) + list.length) % list.length]; nx.focus(); pick(nx.dataset.tab);
+  });
+  put(m.body, err, Object.values(panes));
+  syncPerm();   // 스위치가 줄에 들어간 뒤에
 
   const save = h("button", { class: "ss-btn ss-btn--main", type: "button", text: board ? "저장" : "만들기" });
+  const say = (t, tab) => { err.textContent = t; err.hidden = false; if (tab) pick(tab); };
   save.onclick = async () => {
     const t = title.value.trim();
-    if (!t) { err.textContent = "보드 이름을 적어 주세요."; err.hidden = false; title.focus(); return; }
+    if (!t) { say("보드 이름을 적어 주세요.", "basic"); title.focus(); return; }
     const values = { title: t, description: desc.value.trim(),
       layout: m.body.querySelector('input[name="mb-layout"]:checked').value,
       ...Object.fromEntries(PERMS.map(([k]) => [k, perm[k].checked])), ...look() };
-    if (m.body.querySelector('input[name="mb-bg"]:checked')?.value === "photo" && !values.bg_image_path) {
-      err.textContent = "배경 사진을 골라 주세요."; err.hidden = false; return;
-    }
+    if (m.body.querySelector('input[name="mb-bg"]:checked')?.value === "photo" && !values.bg_image_path) { say("배경 사진을 골라 주세요.", "look"); return; }
     delete values.bg_image;   // 보여 주기용 주소는 저장하지 않아요
     save.disabled = true; save.textContent = board ? "저장하는 중…" : "만드는 중…";
     const bad = await onSave(values);
-    if (bad) { err.textContent = bad; err.hidden = false; save.disabled = false; save.textContent = board ? "저장" : "만들기"; return; }
+    if (bad) { say(bad); save.disabled = false; save.textContent = board ? "저장" : "만들기"; return; }
     m.close();
   };
-  if (onDelete) m.foot.append(h("button", { class: "ss-btn ss-btn--danger ss-modal__foot-start", type: "button", text: "보드 지우기", onclick: async () => {
-    const ok = await confirmBox({ title: "보드를 지울까요?", text: `'${v.title}' 보드와 글·댓글·파일이 모두 지워져요. 되돌릴 수 없어요.` });
-    if (ok) { m.close(); onDelete(); }
-  } }));
   m.foot.append(h("button", { class: "ss-btn", type: "button", text: "취소", onclick: () => m.close() }), save);
-  m.focus();
+  m.mount(tabs);
+  title.focus();
   return m;
 }
 

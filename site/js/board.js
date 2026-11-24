@@ -75,7 +75,7 @@ export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInv
           data.board = { ...data.board, ...v, bg_image: v.bg_image_path ? (picked?.bg_image ?? data.board.bg_image) : null };
           toast("저장했어요");
         } catch (e) { return e?.userMessage || "저장하지 못했어요. 다시 시도해 주세요."; } },
-      onDelete: async () => { if (await guard(api.deleteBoard(boardId))) onDeleted?.(); } }));
+      onDelete: async () => { if (await guard(api.trashBoard(boardId))) { toast("휴지통으로 옮겼어요"); onDeleted?.(); } } }));
   }
 
   const head = h("header", { class: "mb-head" });
