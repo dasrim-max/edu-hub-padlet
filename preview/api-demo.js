@@ -9,12 +9,16 @@ const uid = () => `00000000-0000-4000-8000-${String(++seq).padStart(12, "0")}`;
 
 // ---- 예시 데이터 ----
 const STUDENTS = ["김민준A", "이서연", "박지호", "최하윤", "정우진", "한도윤", "윤지아", "강시우"];
+const folders = [
+  { id: "f1", name: "과학", position: 0 },
+  { id: "f2", name: "국어", position: 1 },
+];
 const boards = [
-  { id: "00000000-0000-4000-8000-000000000001", title: "우리 반 환경 캠페인", description: "캠페인 아이디어를 하나씩 붙여 주세요.", layout: "column", bg_preset: "cream-dots", card_color: null,
+  { id: "00000000-0000-4000-8000-000000000001", title: "우리 반 환경 캠페인", description: "캠페인 아이디어를 하나씩 붙여 주세요.", layout: "column", bg_preset: "cream-dots", card_color: null, folder_id: "f1", favorite: true, deleted_at: null, last_opened_at: ago(3),
     needs_approval: true, allow_post: true, allow_comments: true, allow_like: true, allow_emoji: true, allow_files: true, show_names: true, updated_at: ago(3) },
-  { id: "00000000-0000-4000-8000-000000000002", title: "오늘 배운 것 한 줄", description: "", layout: "wall", bg_preset: null, card_color: "yellow",
+  { id: "00000000-0000-4000-8000-000000000002", title: "오늘 배운 것 한 줄", description: "", layout: "wall", bg_preset: null, card_color: "yellow", folder_id: "f2", favorite: false, deleted_at: null, last_opened_at: ago(60 * 26),
     needs_approval: false, allow_post: true, allow_comments: true, allow_like: true, allow_emoji: false, allow_files: false, show_names: false, updated_at: ago(60 * 26) },
-  { id: "00000000-0000-4000-8000-000000000003", title: "과학 실험 보고서 모음", description: "모둠별로 사진과 보고서 파일을 올려요.", layout: "grid", bg_preset: "navy-grid", card_color: null,
+  { id: "00000000-0000-4000-8000-000000000003", title: "과학 실험 보고서 모음", description: "모둠별로 사진과 보고서 파일을 올려요.", layout: "grid", bg_preset: "navy-grid", card_color: null, folder_id: "f1", favorite: false, deleted_at: null, last_opened_at: ago(60 * 24 * 6),
     needs_approval: false, allow_post: true, allow_comments: false, allow_like: true, allow_emoji: true, allow_files: true, show_names: true, updated_at: ago(60 * 24 * 6) },
 ];
 const sections = [
@@ -55,9 +59,9 @@ const KEY = "moaboard:demo";
 try {
   if (new URLSearchParams(location.search).get("reset") === "1") sessionStorage.removeItem(KEY);
   const saved = JSON.parse(sessionStorage.getItem(KEY) || "null");
-  if (saved) { boards.splice(0, boards.length, ...saved.boards); sections.splice(0, sections.length, ...saved.sections); posts.splice(0, posts.length, ...saved.posts); seq = saved.seq; }
+  if (saved) { if (saved.folders) folders.splice(0, folders.length, ...saved.folders); boards.splice(0, boards.length, ...saved.boards); sections.splice(0, sections.length, ...saved.sections); posts.splice(0, posts.length, ...saved.posts); seq = saved.seq; }
 } catch { /* 저장 불가 환경이면 메모리만 */ }
-const save = () => { try { sessionStorage.setItem(KEY, JSON.stringify({ boards, sections, posts, seq })); } catch { /* 무시 */ } };
+const save = () => { try { sessionStorage.setItem(KEY, JSON.stringify({ folders, boards, sections, posts, seq })); } catch { /* 무시 */ } };
 
 // ---- 시안 상태(목록 화면의 불러오는 중·빈 상태·오류를 볼 때) ----
 const q = new URLSearchParams(location.search);
@@ -81,7 +85,7 @@ const clone = (v) => structuredClone(v);
 export async function listBoards() {
   await gate();
   if (DEMO_STATE === "empty") return [];
-  return clone(boards).sort((a, b) => b.updated_at.localeCompare(a.updated_at)).map((b) => ({
+  return clone(boards).sort((a, b) => (b.last_opened_at || b.updated_at).localeCompare(a.last_opened_at || a.updated_at)).map((b) => ({
     ...b,
     post_count: posts.filter((p) => p.board_id === b.id && p.status === "visible").length,
     pending_count: posts.filter((p) => p.board_id === b.id && p.status === "pending").length,
@@ -91,6 +95,7 @@ export async function getBoard(id) {
   await gate();
   const b = boards.find((x) => x.id === id);
   if (!b) return null;
+  b.last_opened_at = new Date().toISOString(); save();
   return {
     board: clone(b),
     sections: clone(sections.filter((s) => s.board_id === id)).sort((a, z) => a.position - z.position),
@@ -99,7 +104,8 @@ export async function getBoard(id) {
 }
 export async function createBoard(v) {
   await wait();
-  const b = { id: uid(), description: "", ...v, updated_at: new Date().toISOString() };
+  const now = new Date().toISOString();
+  const b = { id: uid(), description: "", folder_id: null, favorite: false, deleted_at: null, ...v, updated_at: now, last_opened_at: now };
   boards.push(b);
   if (b.layout !== "wall") sections.push({ id: uid(), board_id: b.id, title: "첫 번째 칸", position: 0 });
   save(); return clone(b);
@@ -118,6 +124,15 @@ export async function deleteBoard(id) {
   for (let i = posts.length - 1; i >= 0; i--) if (posts[i].board_id === id) posts.splice(i, 1);
   save();
 }
+
+// ---- 목록: 즐겨찾기·폴더·휴지통 ----
+export async function setBoardMeta(id, patch) { await wait(80); const b = boards.find((x) => x.id === id); if ("folder_id" in patch) b.folder_id = patch.folder_id; if ("favorite" in patch) b.favorite = patch.favorite; save(); }
+export async function trashBoard(id) { await wait(80); boards.find((x) => x.id === id).deleted_at = new Date().toISOString(); save(); }
+export async function restoreBoard(id) { await wait(80); boards.find((x) => x.id === id).deleted_at = null; save(); }
+export async function listFolders() { await gate(); return clone(folders).sort((a, b) => a.position - b.position); }
+export async function createFolder(name) { await wait(80); const f = { id: uid(), name, position: folders.length }; folders.push(f); save(); return clone(f); }
+export async function renameFolder(id, name) { await wait(80); folders.find((f) => f.id === id).name = name; save(); }
+export async function deleteFolder(id) { await wait(80); folders.splice(folders.findIndex((f) => f.id === id), 1); boards.forEach((b) => { if (b.folder_id === id) b.folder_id = null; }); save(); }
 
 // ---- 칸 ----
 export async function addSection(boardId, title) {

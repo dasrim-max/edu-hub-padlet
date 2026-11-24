@@ -58,6 +58,11 @@ export function checkFile(file, kind) {
 const NS = "http://www.w3.org/2000/svg";
 const PATHS = {
   plus: "M8 3v10M3 8h10",
+  star: "M8 2l1.8 3.8 4.2.5-3.1 2.9.8 4.1L8 11.3l-3.7 2 .8-4.1L2 6.3l4.2-.5z",
+  folder: "M2 4.5v8h12V6H8L6.5 4.5z",
+  trash: "M3 4.5h10M6 4.5V3h4v1.5M4.5 4.5l.7 9h5.6l.7-9",
+  clock: "M8 2.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11zM8 5v3l2 1.2",
+  undo: "M5 6H11a3 3 0 0 1 0 6H8M5 6l2.5-2.5M5 6l2.5 2.5",
   play: "M5 3.5v9l7-4.5z",
   pause: "M5 3.5v9M11 3.5v9",
   prev: "M10 3.5 5.5 8l4.5 4.5",
@@ -86,7 +91,7 @@ export function icon(name, cls = "mb-ico") {
   svg.setAttribute("aria-hidden", "true");
   const p = document.createElementNS(NS, "path");
   p.setAttribute("d", PATHS[name] || "");
-  p.setAttribute("fill", name === "play" ? "currentColor" : "none");
+  p.setAttribute("fill", name === "play" ? "currentColor" : "none");   // 별은 CSS 가 채워요(즐겨찾기)
   p.setAttribute("stroke", "currentColor");
   p.setAttribute("stroke-width", name === "more" || name === "grip" ? "2.6" : "1.6");
   p.setAttribute("stroke-linecap", "round");

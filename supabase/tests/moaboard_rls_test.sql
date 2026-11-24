@@ -90,9 +90,24 @@ do $$ begin
   insert into r(name,pass) values ('교사A: 다른 보드 파일을 글 사진으로 못 씀', false);
 exception when others then insert into r(name,pass) values ('교사A: 다른 보드 파일을 글 사진으로 못 씀', true); end $$;
 
+-- 폴더·즐겨찾기·휴지통
+insert into moaboard_folders (teacher_id, name) values ('11111111-1111-4111-8111-111111111111','과학');
+update moaboard_boards set folder_id=(select id from moaboard_folders where name='과학'), favorite=true where id='b0000000-0000-4000-8000-00000000000a';
+insert into r(name,pass) select '교사A: 자기 폴더에 보드 넣기·즐겨찾기', (select folder_id is not null and favorite from moaboard_boards where id='b0000000-0000-4000-8000-00000000000a');
+do $$ begin
+  insert into moaboard_folders (teacher_id, name) values ('22222222-2222-4222-8222-222222222222','남의 폴더');
+  insert into r(name,pass) values ('교사A: 다른 교사 이름으로 폴더 못 만듦', false);
+exception when others then insert into r(name,pass) values ('교사A: 다른 교사 이름으로 폴더 못 만듦', true); end $$;
+
 -- 교사B: A가 한 일이 B 쪽에 없는지
 select set_config('request.jwt.claims', '{"sub":"22222222-2222-4222-8222-222222222222","role":"authenticated"}', true);
 insert into r(name,pass) select '교사B: 자기 글은 그대로(A가 못 고침)', (select body from moaboard_posts where id='d0000000-0000-4000-8000-00000000000b')='B 글';
+insert into r(name,pass) select '교사B: A의 폴더 안 보임', (select count(*) from moaboard_folders)=0;
+do $$ begin
+  update moaboard_boards set folder_id=(select id from moaboard_folders where name='과학' limit 1) where id='b0000000-0000-4000-8000-00000000000b';
+  if not found or (select folder_id from moaboard_boards where id='b0000000-0000-4000-8000-00000000000b') is null then raise exception 'blocked'; end if;
+  insert into r(name,pass) values ('교사B: 다른 교사 폴더에 보드 못 넣음', false);
+exception when others then insert into r(name,pass) values ('교사B: 다른 교사 폴더에 보드 못 넣음', true); end $$;
 insert into r(name,pass) select '교사B: A의 댓글·반응·파일 안 보임', (select count(*) from moaboard_comments)=0 and (select count(*) from moaboard_reactions)=0 and (select count(*) from storage.objects)=0;
 
 -- 미인증 교사·로그인 안 한 사람
