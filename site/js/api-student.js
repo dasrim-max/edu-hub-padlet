@@ -1,6 +1,7 @@
 // 학생용 저장소: 학생은 DB 를 직접 쓰지 못하고 서버 함수 moaboard-student 만 부른다.
 // 화면(board.js)이 부르는 함수 이름은 교사용(api-teacher.js)과 같다. 교사만 쓰는 것(칸·확인·옮기기)은 없다.
 import { studentCall } from "/shared/student.js";
+import { uploadWith } from "/shared/files.js";
 
 const FN = "moaboard-student";
 const POLL_MS = 5000;   // 학생 화면은 5초마다 다시 읽어요(화면이 보일 때만)
@@ -28,8 +29,27 @@ export function createStudentApi({ me, contentId, boardId = null }) {
     if (!r.data?.ok) throw fail(r);
     return r.data;
   }
+  const urlKeep = new Map();   // 파일 key → { url, at }
+  const KEEP_MS = 50 * 60 * 1000;
+  /** 같은 파일은 50분 동안 처음 받은 주소를 그대로(5초마다 다시 읽어도 사진을 새로 받지 않게). 1시간이 되기 전에 새 주소로 */
+  function keepUrls(d) {
+    const now = Date.now();
+    const pick = (key, url) => {
+      if (!key || !url) return url;
+      const c = urlKeep.get(key);
+      if (c && now - c.at < KEEP_MS) return c.url;
+      urlKeep.set(key, { url, at: now }); return url;
+    };
+    d.board.bg_image = pick(d.board.bg_image_key, d.board.bg_image);
+    for (const p of d.posts) {
+      p.image = pick(p.image_key, p.image);
+      if (p.file) p.file.url = pick(p.file.key, p.file.url);
+      if (p.video) p.video.url = pick(p.video.key, p.video.url);
+    }
+    return d;
+  }
   async function write(action, body) {
-    const d = await call(action, body);
+    const d = keepUrls(await call(action, body));
     last = { board: d.board, sections: d.sections, posts: d.posts }; lastAt = Date.now();
     notify();
   }
@@ -40,7 +60,7 @@ export function createStudentApi({ me, contentId, boardId = null }) {
     async getBoard(id) {
       if (id) boardId = contentId === id ? null : id;
       if (last && Date.now() - lastAt < 1500) return structuredClone(last);   // 방금 쓴 결과가 있으면 다시 부르지 않아요
-      const d = await call("board");
+      const d = keepUrls(await call("board"));
       last = { board: d.board, sections: d.sections, posts: d.posts }; lastAt = Date.now();
       return structuredClone(last);
     },
@@ -53,14 +73,10 @@ export function createStudentApi({ me, contentId, boardId = null }) {
     deleteComment: (_postId, commentId) => write("uncomment", { comment_id: commentId }),
 
     /** 서버가 만든 내 폴더 주소로 바로 올려요(10분 유효). 미리보기는 이 기기의 파일로 */
-    async uploadFile(file, kind) {
-      const d = await call("upload_url", { kind: kind === "image" || kind === "video" ? kind : "file", name: file.name, size: file.size });
-      const form = new FormData();
-      form.append("cacheControl", "3600");
-      form.append("", file);
-      const res = await fetch(d.upload_url, { method: "PUT", body: form, headers: { "x-upsert": "false" }, signal: AbortSignal.timeout(kind === "video" ? 600e3 : 120e3) }).catch(() => null);
-      if (!res?.ok) throw fail({ status: 0, data: { message: "올리지 못했어요. 인터넷 연결을 확인하고 다시 골라 주세요." } });
-      return { name: file.name, size: file.size, path: d.path, url: URL.createObjectURL(file) };
+    /** 서버(공통 파일 모듈)가 준 내 폴더 주소로 올려요. 사진은 올리기 전에 줄여요(공통 모듈). 미리보기는 이 기기의 파일로 */
+    async uploadFile(file, kind, shrink) {
+      const up = await uploadWith((meta) => call("upload_url", meta), file, kind, undefined, shrink);
+      return { name: up.name, size: up.size, path: up.path, url: up.previewUrl };
     },
 
     subscribe(fn) {

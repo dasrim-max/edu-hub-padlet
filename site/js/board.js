@@ -66,7 +66,7 @@ export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInv
     });
     let picked = null;   // 설정 창에서 마지막으로 미리 본 꾸미기(사진 주소 포함)
     bar.addAction("보드 설정", () => openBoardDialog({ board: data.board,
-      upload: (f) => api.uploadFile(f, "image"),
+      upload: (f) => api.uploadFile(f, "image", { max: 1920 }),   // 배경 사진은 크게 보여 주니 1920px
       onPreview: (look) => { picked = look; applyLook({ ...data.board, ...look }); },
       onClose: () => applyLook(data.board),   // 저장했으면 새 값, 취소했으면 원래 꾸미기
       onSave: async (v) => {

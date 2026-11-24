@@ -1,7 +1,7 @@
 // 실행: node --experimental-strip-types --test supabase/functions/moaboard-student/logic.test.ts
 import test from "node:test";
 import assert from "node:assert/strict";
-import { checkPost, ownPath, shapeBoard, uploadPath, IMAGE_EXT, type Board, type PostRow } from "./logic.ts";
+import { checkPost, fileKey, isHubPath, ownFile, ownPath, shapeBoard, IMAGE_EXT, VIDEO_EXT, type Board, type PostRow } from "./logic.ts";
 
 const T = "11111111-1111-4111-8111-111111111111", B = "b0000000-0000-4000-8000-00000000000a";
 const ME = "aaaaaaaa-0000-4000-8000-000000000001", YOU = "aaaaaaaa-0000-4000-8000-000000000002";
@@ -28,24 +28,30 @@ test("글 검사: 빈 글·긴 글·파일 끈 보드", () => {
 });
 
 test("영상: 종류·크기 검사, 내 폴더 경로만, 영상만 있는 글도 됨", () => {
-  assert.deepEqual(uploadPath({ kind: "video", name: "발표.MOV", size: 30 * 1024 * 1024 }, own, R), { ok: true, path: `${T}/${B}/${ME}/${R}.mov` });
-  assert.equal((uploadPath({ kind: "video", name: "a.avi", size: 10 }, own, R) as { error: string }).error, "bad_type");
-  assert.equal((uploadPath({ kind: "video", name: "a.mp4", size: 51 * 1024 * 1024 }, own, R) as { error: string }).error, "too_big");
   const ok = checkPost({ video: { path: `${T}/${B}/${ME}/${R}.mp4`, name: "발표.mp4", size: 1234 } }, own, true);
   assert.ok("v" in ok && ok.v.video_path === `${T}/${B}/${ME}/${R}.mp4` && ok.v.video_name === "발표.mp4" && ok.v.video_size === 1234);
   assert.equal((checkPost({ video: { path: `${T}/${B}/${YOU}/${R}.mp4` } }, own, true) as { error: string }).error, "bad_file", "다른 학생 영상");
   assert.equal((checkPost({ video: { path: `${T}/${B}/${ME}/${R}.mp4` } }, own, false) as { error: string }).error, "no_files");
   const out = shapeBoard(board(), [], [row({ id: "v", video_path: `${T}/${B}/${YOU}/${R}.mp4`, video_name: "v.mp4", video_size: 9 })], ME, new Map([[`${T}/${B}/${YOU}/${R}.mp4`, "https://signed/v"]]));
-  assert.deepEqual(out.posts[0].video, { name: "v.mp4", size: 9, url: "https://signed/v", path: null });
+  assert.deepEqual(out.posts[0].video, { name: "v.mp4", size: 9, url: "https://signed/v", key: R, path: null }, "경로 전체는 다른 학생에게 보내지 않음");
 });
 
-test("올릴 파일: 종류·크기 검사 후 내 폴더 경로", () => {
-  const ok = uploadPath({ kind: "image", name: "사진.JPEG", size: 1000 }, own, R);
-  assert.deepEqual(ok, { ok: true, path: `${T}/${B}/${ME}/${R}.jpg` });
-  assert.equal((uploadPath({ kind: "image", name: "a.pdf", size: 10 }, own, R) as { error: string }).error, "bad_type");
-  assert.equal((uploadPath({ kind: "image", name: "a.png", size: 11 * 1024 * 1024 }, own, R) as { error: string }).error, "too_big");
-  assert.equal((uploadPath({ kind: "file", name: "a.hwp", size: 0 }, own, R) as { error: string }).error, "bad_size");
-  assert.ok("path" in uploadPath({ kind: "file", name: "a.hwp", size: 19 * 1024 * 1024 }, own, R));
+test("새 경로(공통 파일 모듈): 이 학생·이 보드·이 교사 것만, 종류에 맞는 확장자만", () => {
+  const hub = (who: string, board = B, teacher = T, ext = "png") => `moaboard/${teacher}/${board}/${who}/${R}.${ext}`;
+  assert.equal(isHubPath(hub(ME)), true);
+  assert.equal(isHubPath(`${T}/${B}/${ME}/${R}.png`), false, "예전 경로");
+  assert.equal(ownFile(hub(ME), own, IMAGE_EXT), true);
+  assert.equal(ownFile(hub(YOU), own, IMAGE_EXT), false, "다른 학생");
+  assert.equal(ownFile(hub("t"), own, IMAGE_EXT), false, "교사 파일");
+  assert.equal(ownFile(hub(ME, "b0000000-0000-4000-8000-00000000000b"), own, IMAGE_EXT), false, "다른 보드");
+  assert.equal(ownFile(hub(ME, B, "22222222-2222-4222-8222-222222222222"), own, IMAGE_EXT), false, "다른 교사");
+  assert.equal(ownFile(hub(ME, B, T, "mp4"), own, IMAGE_EXT), false, "사진 칸에 영상");
+  assert.equal(ownFile(hub(ME, B, T, "mp4"), own, VIDEO_EXT), true);
+  assert.equal(ownFile(`moaboard/${T}/${B}/${ME}/../${R}.png`, own, IMAGE_EXT), false, "../");
+  assert.equal(ownFile(`quiz/${T}/${B}/${ME}/${R}.png`, own, IMAGE_EXT), false, "다른 앱");
+  assert.equal(ownFile(`${T}/${B}/${ME}/${R}.png`, own, IMAGE_EXT), true, "예전 경로도 전환 기간에는 받음");
+  assert.equal(fileKey(hub(ME)), R);
+  assert.equal(fileKey(null), null);
 });
 
 const board = (o: Partial<Board> = {}): Board => ({ id: B, title: "보드", description: "", layout: "column", needs_approval: true, allow_post: true,

@@ -1,5 +1,5 @@
 // 팝업: 보드 만들기·설정, 글쓰기·고치기, 글 자세히 보기(댓글)
-import { h, put, fill, modal, icon, LAYOUTS, LIMITS, EMOJIS, VIDEO_EXT, checkFile, fileExt, fileSize, timeAgo, confirmBox, toast, videoEl } from "./common.js";
+import { h, put, fill, modal, icon, LAYOUTS, LIMITS, EMOJIS, VIDEO_EXT, checkFile, fileExt, fileSize, timeAgo, confirmBox, toast, videoEl, userMsg } from "./common.js";
 import { BG_PRESETS, CARD_COLORS } from "./board-style.js";
 
 // ---------------------------------------------------------------------------
@@ -85,11 +85,11 @@ export function openBoardDialog({ board = null, onSave, onDelete, upload = null,
     const sw = photoOpt.querySelector(".mb-bgsw");
     sw.replaceChildren(h("small", { text: "올리는 중…" }));
     try {
-      const up = await upload(await shrinkImage(f));
+      const up = await upload(f);   // 줄이기(배경은 1920px)는 올릴 때 공통 파일 모듈이 해요
       photo = { path: up.path, url: up.url };
       sw.replaceChildren(photoSw());
       photoOpt.querySelector("input").checked = true; preview();
-    } catch (e) { sw.replaceChildren(photoSw()); bgErr.textContent = e?.userMessage || "사진을 올리지 못했어요. 다시 골라 주세요."; bgErr.hidden = false; }
+    } catch (e) { sw.replaceChildren(photoSw()); bgErr.textContent = userMsg(e, "사진을 올리지 못했어요. 다시 골라 주세요."); bgErr.hidden = false; }
   });
   const groups = {
     pattern: h("div", { class: "mb-swatches", role: "radiogroup", "aria-label": "배경 무늬" }, bgOpt("", "기본"), BG_PRESETS.filter((p) => p.group === "pattern").map((p) => bgOpt(p.id, p.label))),
@@ -232,7 +232,7 @@ export function openCompose({ post = null, sections = [], sectionId = null, allo
       else if (kind === "video") video = { name: up.name, size: up.size, url: up.url, path: up.path };
       else file = { name: up.name, size: up.size, url: up.url, path: up.path };
       drawAttach();
-    } catch (e) { say(e?.userMessage || "올리지 못했어요. 인터넷 연결을 확인하고 다시 골라 주세요."); }
+    } catch (e) { say(userMsg(e, "올리지 못했어요. 인터넷 연결을 확인하고 다시 골라 주세요.")); }
     busy = false; send.disabled = false; send.textContent = post ? "고치기" : "붙이기";
   };
   pickImg.addEventListener("change", onPick("image"));
@@ -339,19 +339,4 @@ export function reactionBar(p, board, { onLike, onEmoji, big = false }) {
     board.allow_like && btn("mb-react--like", p.liked, `좋아요 ${p.likes}개`, [icon("heart"), h("span", { text: String(p.likes || 0) })], (e) => { e.stopPropagation(); onLike(); }),
     board.allow_emoji && used.map(([em, n]) => btn("", p.my_emojis?.includes(em), `${em} ${n}개`, [h("span", { text: em }), h("span", { text: String(n) })], (e) => { e.stopPropagation(); onEmoji(em); })),
     add);
-}
-
-/** 큰 사진은 긴 쪽 1920px 로 줄여 JPG 로(원본 학급패들렛과 같음). 줄일 수 없으면 원본 그대로 */
-export async function shrinkImage(file, max = 1920, quality = 0.85) {
-  if (!/^image\/(png|jpeg|webp)$/.test(file.type)) return file;
-  try {
-    const bmp = await createImageBitmap(file);
-    const k = Math.min(1, max / Math.max(bmp.width, bmp.height));
-    if (k === 1 && file.size < 1.5 * 1024 * 1024) return file;
-    const c = document.createElement("canvas");
-    c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
-    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
-    const blob = await new Promise((ok) => c.toBlob(ok, "image/jpeg", quality));
-    return blob ? new File([blob], "background.jpg", { type: "image/jpeg" }) : file;
-  } catch { return file; }
 }

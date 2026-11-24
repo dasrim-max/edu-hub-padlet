@@ -99,6 +99,34 @@ do $$ begin
   insert into r(name,pass) values ('교사A: 다른 교사 이름으로 폴더 못 만듦', false);
 exception when others then insert into r(name,pass) values ('교사A: 다른 교사 이름으로 폴더 못 만듦', true); end $$;
 
+-- 공통 파일 모듈 경로(moaboard/<교사>/<보드>/<학생 또는 t>/<uuid>.<확장자>)
+update moaboard_posts set image_path='moaboard/11111111-1111-4111-8111-111111111111/b0000000-0000-4000-8000-00000000000a/t/eeeeeeee-0000-4000-8000-000000000001.jpg' where title='교사 글';
+insert into r(name,pass) select '교사A: 새 경로(교사 t) 사진 붙이기', (select image_path like 'moaboard/%' from moaboard_posts where title='교사 글');
+update moaboard_posts set video_path='moaboard/11111111-1111-4111-8111-111111111111/b0000000-0000-4000-8000-00000000000a/aaaaaaaa-0000-4000-8000-000000000001/eeeeeeee-0000-4000-8000-000000000001.mp4', video_name='v.mp4' where id='d0000000-0000-4000-8000-00000000000a';
+insert into r(name,pass) select '교사A: 학생 글에 그 학생의 새 경로 영상', (select video_path is not null from moaboard_posts where id='d0000000-0000-4000-8000-00000000000a');
+update moaboard_boards set bg_image_path='moaboard/11111111-1111-4111-8111-111111111111/b0000000-0000-4000-8000-00000000000a/t/eeeeeeee-0000-4000-8000-000000000001.jpg' where id='b0000000-0000-4000-8000-00000000000a';
+insert into r(name,pass) select '교사A: 새 경로 배경 사진', (select bg_image_path like 'moaboard/%' from moaboard_boards where id='b0000000-0000-4000-8000-00000000000a');
+do $$ begin
+  update moaboard_posts set image_path='moaboard/22222222-2222-4222-8222-222222222222/b0000000-0000-4000-8000-00000000000a/t/eeeeeeee-0000-4000-8000-000000000001.jpg' where title='교사 글';
+  insert into r(name,pass) values ('새 경로: 다른 교사 폴더 거부', false);
+exception when others then insert into r(name,pass) values ('새 경로: 다른 교사 폴더 거부', true); end $$;
+do $$ begin
+  update moaboard_posts set image_path='moaboard/11111111-1111-4111-8111-111111111111/b0000000-0000-4000-8000-00000000000b/t/eeeeeeee-0000-4000-8000-000000000001.jpg' where title='교사 글';
+  insert into r(name,pass) values ('새 경로: 다른 보드 거부', false);
+exception when others then insert into r(name,pass) values ('새 경로: 다른 보드 거부', true); end $$;
+do $$ begin
+  update moaboard_posts set image_path='moaboard/11111111-1111-4111-8111-111111111111/b0000000-0000-4000-8000-00000000000a/aaaaaaaa-0000-4000-8000-000000000002/eeeeeeee-0000-4000-8000-000000000001.jpg' where id='d0000000-0000-4000-8000-00000000000a';
+  insert into r(name,pass) values ('새 경로: 다른 학생 파일 거부', false);
+exception when others then insert into r(name,pass) values ('새 경로: 다른 학생 파일 거부', true); end $$;
+do $$ begin
+  update moaboard_posts set image_path='moaboard/11111111-1111-4111-8111-111111111111/b0000000-0000-4000-8000-00000000000a/t/../x/eeeeeeee-0000-4000-8000-000000000001.jpg' where title='교사 글';
+  insert into r(name,pass) values ('새 경로: 칸이 더 많은 경로(../) 거부', false);
+exception when others then insert into r(name,pass) values ('새 경로: 칸이 더 많은 경로(../) 거부', true); end $$;
+do $$ begin
+  update moaboard_boards set bg_image_path='moaboard/11111111-1111-4111-8111-111111111111/b0000000-0000-4000-8000-00000000000a/aaaaaaaa-0000-4000-8000-000000000001/eeeeeeee-0000-4000-8000-000000000001.jpg' where id='b0000000-0000-4000-8000-00000000000a';
+  insert into r(name,pass) values ('새 경로: 배경은 교사 파일(t)만', false);
+exception when others then insert into r(name,pass) values ('새 경로: 배경은 교사 파일(t)만', true); end $$;
+
 -- 교사B: A가 한 일이 B 쪽에 없는지
 select set_config('request.jwt.claims', '{"sub":"22222222-2222-4222-8222-222222222222","role":"authenticated"}', true);
 insert into r(name,pass) select '교사B: 자기 글은 그대로(A가 못 고침)', (select body from moaboard_posts where id='d0000000-0000-4000-8000-00000000000b')='B 글';
@@ -124,6 +152,9 @@ do $$ begin
 exception when others then insert into r(name,pass) values ('로그인 안 함: 글 못 읽음', true); end $$;
 
 reset role;
+-- 명단에서 학생을 지우면 글은 남고(올린 사람 칸 비움) 파일 경로 확인이 막지 않는다
+delete from students where id='aaaaaaaa-0000-4000-8000-000000000001';
+insert into r(name,pass) select '학생 삭제: 글과 파일 경로는 남음', (select student_id is null and video_path is not null from moaboard_posts where id='d0000000-0000-4000-8000-00000000000a');
 -- 칸을 지우면 글은 남고 '칸 없음'으로
 delete from moaboard_sections where id='c0000000-0000-4000-8000-00000000000a';
 insert into r(name,pass) select '칸 지우기: 글은 남고 칸 없음', (select count(*) from moaboard_posts where board_id='b0000000-0000-4000-8000-00000000000a' and section_id is null)=2;

@@ -40,10 +40,11 @@ export function fileSize(n) {
 export const fileExt = (name) => (String(name).split(".").pop() || "").toLowerCase();
 
 /** 고를 파일 검사: 문제가 없으면 null, 있으면 고치는 방법을 함께 쓴 문구 */
-export function checkFile(file, kind) {
+/** 올리기 전 화면 검사. 사진은 올릴 때 줄어드니(공통 파일 모듈) 크기는 줄인 뒤 공통 모듈이 확인해요 */
+export function checkFile(file, kind, { beforeShrink = kind === "image" } = {}) {
   if (kind === "image") {
     if (!IMAGE_TYPES.includes(file.type)) return "사진은 PNG, JPG, GIF, WEBP 파일만 올릴 수 있어요.";
-    if (file.size > LIMITS.imageBytes) return "사진이 10MB보다 커요. 크기를 줄여서 다시 골라 주세요.";
+    if (!beforeShrink && file.size > LIMITS.imageBytes) return "사진이 10MB보다 커요. 크기를 줄여서 다시 골라 주세요.";
   } else if (kind === "video") {
     if (!VIDEO_EXT.includes(fileExt(file.name))) return "영상은 MP4, WEBM, MOV 파일만 올릴 수 있어요.";
     if (file.size > LIMITS.videoBytes) return "영상이 50MB보다 커요. 짧게 자르거나 화질을 낮춰서 다시 골라 주세요.";
@@ -119,6 +120,9 @@ export function modal({ title, wide = false, cls = "", onClose } = {}) {
   document.body.append(scrim);
   return { scrim, box, head, body, foot, close, focus: () => box.querySelector("[data-autofocus], input, textarea, select, button")?.focus() };
 }
+
+/** 오류에서 화면에 보여 줄 문구: 서버·공통 모듈이 준 한국어 안내, 없으면 fallback */
+export const userMsg = (e, fallback) => e?.userMessage || (/[가-힣]/.test(e?.message || "") ? e.message : fallback);
 
 export function toast(text, opt) { window.SSUI?.toast(text, opt); }
 
