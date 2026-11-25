@@ -11,7 +11,7 @@
 //   학생: const me = await initStudent({ appSlug: SLUG, contentId: c })  (자동 로그아웃 경고도 여기서 켜져요)
 //   api-demo.js 를 api-teacher.js / api-student.js 로 바꿔 끼워요.
 import * as api from "./api-demo.js";
-import { h, APP_NAME } from "../site/js/common.js";
+import { h, APP_NAME, addVersion } from "../site/js/common.js";
 import { mountList } from "../site/js/list.js";
 import { mountBoard } from "../site/js/board.js";
 
@@ -25,6 +25,7 @@ function appBar() {
   const btns = h("span", { class: "mb-appbar__btns" });
   barHost.replaceChildren(h("header", { class: "ss-appbar" },
     h("span", { class: "ss-appbar__name", text: APP_NAME }), h("span", { class: "ss-appbar__sp" }), btns));
+  addVersion(barHost);
   return {
     addAction(label, fn) {
       const b = h("button", { class: "ss-appbtn" + (btns.children.length ? " ss-appbtn--sub" : ""), type: "button", text: label, onclick: fn });

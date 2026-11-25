@@ -1,6 +1,6 @@
 // 교사 첫 화면(보드 목록): 왼쪽 메뉴(최근 · 즐겨찾기 · 휴지통 · 폴더) + 오른쪽 카드 격자
 // 휴지통: 보드를 옮기면 학생은 못 들어와요. 30일이 지나면 목록을 열 때 영구 삭제해요.
-import { h, put, fill, icon, modal, confirmBox, errorBox, timeAgo, toast, LAYOUTS, APP_NAME, VERSION } from "./common.js";
+import { h, put, fill, icon, modal, confirmBox, errorBox, timeAgo, toast, LAYOUTS } from "./common.js";
 import { openBoardDialog } from "./dialogs.js";
 
 const TRASH_DAYS = 30;
@@ -18,7 +18,7 @@ export async function mountList({ root, api, bar, openNew = false, onOpen, userN
       oninput: (e) => { query = e.target.value.trim().toLowerCase(); drawMain(); } }));
   const side = h("aside", { class: "mb-side", "aria-label": "모아보드 메뉴" },
     h("div", { class: "mb-side__hello" }, h("b", { text: userName ? `${userName} 선생님` : "선생님" }), h("span", { text: "오늘은 어떤 생각을 모아 볼까요?" })),
-    search, nav, h("p", { class: "mb-side__ver", text: `${APP_NAME} v${VERSION}` }));
+    search, nav);
   const main = h("section", { class: "mb-main" });
   root.replaceChildren(h("div", { class: "mb-shell" }, side, main));
   // 새 보드는 격자 맨 앞 "+ 새 보드 만들기" 카드로 만들어요(왼쪽 메뉴·상단에는 버튼을 두지 않음)
