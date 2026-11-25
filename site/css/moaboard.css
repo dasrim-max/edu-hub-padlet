@@ -156,8 +156,11 @@
 .mb-nav__go small { color: var(--ap-text-2); font-size: 12px; font-weight: 400; }
 .mb-nav__item .mb-iconbtn { width: 28px; height: 28px; opacity: .6; }
 .mb-nav__add { color: var(--ap-text-2); }
-/* 상단 바 앱 이름 옆 버전 배지 */
 .mb-ver { margin-left: 8px; font-size: 13px; padding: 2px 8px; vertical-align: middle; }
+/* 쌤허브 앱 이름표(왼쪽 위에 떠 있음) 자리 비워 두기: 이름표가 뜬 화면에서만. 앱 이름은 이름표가 보여 주니 숨겨요 */
+html[data-ss-appbadge] .mb-brand { display: none; }
+html[data-ss-appbadge] .mb-side { padding-top: var(--ss-appbadge-h, 22px); }
+html[data-ss-appbadge] .mb-app:not(.mb-app--list) { padding-top: var(--ss-appbadge-h, 18px); }
 
 .mb-main { display: grid; gap: 18px; align-content: start; padding: 26px max(16px, 2vw) 60px; min-width: 0; }
 .mb-main__head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }

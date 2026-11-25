@@ -7,7 +7,7 @@
 import { initHub, initStudent } from "/shared/index.js";
 import { APP_ENTRY_ID } from "/shared/config.js";
 import { isUuid } from "/shared/util.js";
-import { h, SLUG, APP_NAME, errorBox, addVersion } from "./common.js";
+import { h, SLUG, APP_NAME, errorBox, VERSION } from "./common.js";
 import { createTeacherApi } from "./api-teacher.js";
 import { createStudentApi } from "./api-student.js";
 import { mountList } from "./list.js";
@@ -25,8 +25,8 @@ if (q.get("as") === "student") {
   if (c === APP_ENTRY_ID) await pickBoard(me);
   else await mountBoard({ root, api: createStudentApi({ me, contentId: c }), role: "student", me, boardId: c, onTitle: setTitle });
 } else {
-  const hub = await initHub({ appName: APP_NAME, appSlug: SLUG, topbar: "#bar" });
-  addVersion(document.getElementById("bar"));
+  // 쌤허브가 띄운 앱 창: 왼쪽 위에 앱 이름표(모아보드 + 버전)가 떠요. 앱은 그 자리(--ss-appbadge-w × --ss-appbadge-h)를 비워 둬요
+  const hub = await initHub({ appName: APP_NAME, appVersion: VERSION, appSlug: SLUG, topbar: "#bar" });
   const api = createTeacherApi(hub);
   if (isUuid(c) && c !== APP_ENTRY_ID) {
     await mountBoard({ root, api, role: "teacher", boardId: c, bar: hub.topbar, onTitle: setTitle,
