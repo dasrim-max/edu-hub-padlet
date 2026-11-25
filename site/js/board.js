@@ -56,16 +56,15 @@ export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInv
   applyLook(data.board);
   onTitle?.(data.board.title);
 
-  // ---- 교사 앱 메뉴 ----
-  if (teacher && bar) {
-    bar.addAction("학생 초대", () => onInvite?.(data.board));
-    bar.addAction("슬라이드쇼", () => {
-      const list = ordered().filter((p) => p.status === "visible");
-      if (!list.length) return toast("보여 줄 글이 아직 없어요");
-      openSlideshow({ posts: list, board: data.board, showName });
-    });
-    let picked = null;   // 설정 창에서 마지막으로 미리 본 꾸미기(사진 주소 포함)
-    bar.addAction("보드 설정", () => openBoardDialog({ board: data.board,
+  // ---- 교사 버튼(보드 제목 아래 한 줄: 보드 목록 · 글 찾기 · 확인 기다림 · 학생 초대 · 슬라이드쇼 · 보드 설정) ----
+  // 위쪽 가로 줄은 쓰지 않아요: 앱 이름표(쌤허브 공통)는 이름만, 보드 제목은 그 옆에 와요
+  const showSlides = () => {
+    const list = ordered().filter((p) => p.status === "visible");
+    if (!list.length) return toast("보여 줄 글이 아직 없어요");
+    openSlideshow({ posts: list, board: data.board, showName });
+  };
+  let picked = null;   // 설정 창에서 마지막으로 미리 본 꾸미기(사진 주소 포함)
+  const openSettings = () => openBoardDialog({ board: data.board,
       upload: (f) => api.uploadFile(f, "image", { max: 1920 }),   // 배경 사진은 크게 보여 주니 1920px
       onPreview: (look) => { picked = look; applyLook({ ...data.board, ...look }); },
       onClose: () => applyLook(data.board),   // 저장했으면 새 값, 취소했으면 원래 꾸미기
@@ -75,8 +74,10 @@ export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInv
           data.board = { ...data.board, ...v, bg_image: v.bg_image_path ? (picked?.bg_image ?? data.board.bg_image) : null };
           toast("저장했어요");
         } catch (e) { return e?.userMessage || "저장하지 못했어요. 다시 시도해 주세요."; } },
-      onDelete: async () => { if (await guard(api.trashBoard(boardId))) { toast("휴지통으로 옮겼어요"); onDeleted?.(); } } }));
-  }
+      onDelete: async () => { if (await guard(api.trashBoard(boardId))) { toast("휴지통으로 옮겼어요"); onDeleted?.(); } } });
+  /** 동그란 색 아이콘 버튼(이름은 마우스를 올리면·화면 읽기 프로그램으로) */
+  const tool = (name, label, tone, onclick, extra = {}) => h(extra.href ? "a" : "button",
+    { class: `mb-tool mb-tool--${tone}`, type: extra.href ? null : "button", title: label, "aria-label": label, onclick, ...extra }, icon(name));
 
   const head = h("header", { class: "mb-head" });
   const stage = h("div", { class: "mb-stage" });
@@ -327,14 +328,19 @@ export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInv
         oninput: (e) => { query = e.target.value.trim().toLowerCase(); drawStage(); } }));
     fill(head,
       h("div", { class: "mb-head__text" },
-        teacher && h("a", { class: "mb-back", href: "./", text: "‹ 보드 목록" }),
-        h("h1", { class: "mb-title", text: b.title }),
+        h("h1", { class: "mb-title", text: b.title }),   // 쌤허브 앱 이름표 바로 옆(이름표가 있을 때)
         b.description && h("p", { class: "mb-desc", text: b.description }),
         h("p", { class: "mb-meta" }, teacher ? `글 ${all.filter((p) => p.status === "visible").length}개` : `${me.name || ""} 학생으로 들어왔어요`,
           !teacher && !b.allow_post && " · 지금은 보기만 할 수 있어요")),
-      teacher && h("div", { class: "mb-head__tools" }, search,
+      teacher && h("div", { class: "mb-head__tools" },
+        tool("grid", "보드 목록", "purple", null, { href: "./" }),
+        h("span", { class: "mb-head__sp" }),
+        search,
         b.needs_approval || pendingN ? h("button", { class: "ss-pill mb-pill", type: "button", "aria-pressed": onlyPending ? "true" : "false",
-          onclick: () => { onlyPending = !onlyPending; draw(); } }, `확인 기다림 ${pendingN}`) : null));
+          onclick: () => { onlyPending = !onlyPending; draw(); } }, `확인 기다림 ${pendingN}`) : null,
+        h("button", { class: "ss-btn ss-btn--main mb-invite", type: "button", text: "학생 초대", onclick: () => onInvite?.(data.board) }),
+        tool("play", "슬라이드쇼", "green", showSlides),
+        tool("sliders", "보드 설정", "orange", openSettings)));
 
     const canWrite = teacher || b.allow_post;
     fab.replaceChildren(canWrite ? h("button", { class: teacher ? "mb-fab__btn" : "mb-fab__btn mb-fab__btn--stu", type: "button", onclick: () => compose({ sectionId: !teacher ? stuSection : null }) },
