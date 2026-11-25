@@ -154,6 +154,7 @@
 .mb-nav__go small { color: var(--ap-text-2); font-size: 12px; font-weight: 400; }
 .mb-nav__item .mb-iconbtn { width: 28px; height: 28px; opacity: .6; }
 .mb-nav__add { color: var(--ap-text-2); }
+.mb-side__ver { margin: auto 10px 0; padding-top: 10px; font-size: 12px; color: var(--ap-text-2); }
 
 .mb-main { display: grid; gap: 18px; align-content: start; padding: 26px max(16px, 2vw) 60px; min-width: 0; }
 .mb-main__head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
@@ -163,25 +164,26 @@
 .mb-sort button[aria-pressed="true"] { background: var(--ap-card); color: var(--ap-text); font-weight: 700; box-shadow: var(--ap-shadow); }
 .mb-trashnote { color: var(--ap-text-2); font-size: 13px; }
 
-.mb-boards { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 22px 18px; }
-.mb-bcard { position: relative; display: grid; gap: 6px; align-content: start; color: var(--ap-text); text-decoration: none; }
-.mb-bcard__thumb { position: relative; display: block; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden;
+/* 카드는 한 화면에 많이 보이게 작게(예전의 70%) */
+.mb-boards { display: grid; grid-template-columns: repeat(auto-fill, minmax(162px, 1fr)); gap: 16px 12px; }
+.mb-bcard { position: relative; display: grid; gap: 4px; align-content: start; color: var(--ap-text); text-decoration: none; }
+.mb-bcard__thumb { position: relative; display: block; aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden;
   background-color: var(--as-bg, var(--ap-fill)); background-image: var(--as-pat, none); background-size: var(--as-patsz, auto); background-position: var(--as-patpos, 0 0);
   box-shadow: var(--ap-shadow); transition: transform .15s ease; }
 .mb-bcard:hover .mb-bcard__thumb { transform: translateY(-3px); }
 .mb-bcard__photo { width: 100%; height: 100%; object-fit: cover; display: block; }
-.mb-bcard__badge { position: absolute; left: 8px; top: 8px; }
-.mb-bcard__star { position: absolute; right: 8px; top: 8px; display: inline-grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 50%; cursor: pointer;
+.mb-bcard__badge { position: absolute; left: 6px; top: 6px; }
+.mb-bcard__star { position: absolute; right: 6px; top: 6px; display: inline-grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 50%; cursor: pointer;
   background: var(--ap-card); color: var(--ap-text-2); box-shadow: var(--ap-shadow); opacity: 0; transition: opacity .15s; }
 .mb-bcard:hover .mb-bcard__star, .mb-bcard__star:focus-visible, .mb-bcard__star[aria-pressed="true"] { opacity: 1; }
 .mb-bcard__star[aria-pressed="true"] { color: var(--ap-orange); }
 .mb-bcard__star[aria-pressed="true"] .mb-ico path { fill: currentColor; }
 .mb-bcard__row { display: flex; align-items: flex-start; gap: 4px; }
-.mb-bcard__title { flex: 1; font-weight: 700; font-size: 15px; line-height: 1.35; overflow-wrap: anywhere; }
+.mb-bcard__title { flex: 1; font-weight: 700; font-size: 14px; line-height: 1.3; overflow-wrap: anywhere; }
 .mb-bcard__meta { color: var(--ap-text-2); font-size: 12px; }
 .mb-bcard__acts { display: flex; gap: 6px; flex-wrap: wrap; }
 .mb-bcard--new .mb-bcard__thumb { display: grid; place-items: center; background: var(--ap-card); box-shadow: none; outline: 2px dashed var(--ap-sep); outline-offset: -2px; color: var(--ap-text-2); }
-.mb-bcard--new .mb-bcard__thumb .mb-ico { width: 34px; height: 34px; }
+.mb-bcard--new .mb-bcard__thumb .mb-ico { width: 26px; height: 26px; }
 .mb-bcard--new .mb-bcard__title { color: var(--ap-text-2); font-weight: 400; }
 .mb-bcard--sk { pointer-events: none; }
 .mb-bcard .mb-menu { top: auto; }
@@ -193,7 +195,9 @@
   .mb-nav { display: flex; overflow-x: auto; gap: 4px; }
   .mb-nav__item { flex: none; }
   .mb-nav__item .mb-iconbtn { display: none; }
-  .mb-boards { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px 12px; }
+  .mb-boards { grid-template-columns: repeat(auto-fill, minmax(105px, 1fr)); gap: 12px 8px; }
+  .mb-bcard__title { font-size: 13px; }
+  .mb-side__ver { margin: 0; padding: 0; text-align: right; }
 }
 
 /* 배치 미리보기 그림(보드 목록·보드 만들기) */

@@ -8,6 +8,7 @@ export const fill = (el, ...kids) => el.replaceChildren(...only(kids));
 
 export const SLUG = "moaboard";
 export const APP_NAME = "모아보드";
+export const VERSION = "1.0";   // 보드 목록 왼쪽 메뉴 아래에 보여요
 
 export const LAYOUTS = [
   ["wall", "담벼락", "글이 빈 곳부터 차곡차곡 붙어요"],
