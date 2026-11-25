@@ -27,6 +27,7 @@ if (q.get("as") === "student") {
 } else {
   // 쌤허브가 띄운 앱 창: 왼쪽 위에 앱 이름표(모아보드 + 버전)가 떠요. 앱은 그 자리(--ss-appbadge-w × --ss-appbadge-h)를 비워 둬요
   const hub = await initHub({ appName: APP_NAME, appVersion: VERSION, appSlug: SLUG, topbar: "#bar" });
+  goHomeFromBadge(hub);
   const api = createTeacherApi(hub);
   if (isUuid(c) && c !== APP_ENTRY_ID) {
     await mountBoard({ root, api, role: "teacher", boardId: c, bar: hub.topbar, onTitle: setTitle,
@@ -36,6 +37,17 @@ if (q.get("as") === "student") {
     await mountList({ root, api, bar: hub.topbar, openNew: q.get("mode") === "new", userName: hub.profile?.display_name || "",
       onOpen: (id) => { location.href = `?c=${encodeURIComponent(id)}`; } });
   }
+}
+
+/** 앱 이름표의 "모아보드"를 누르면 보드 목록으로(포털 이름표가 스스로 링크를 걸어 주면 그쪽을 써요) */
+function goHomeFromBadge(hub) {
+  const name = hub.badge?.el?.querySelector(".ss-appbadge__name");
+  if (!name || name.closest("a")) return;
+  const go = () => { location.href = "./"; };
+  name.setAttribute("role", "link"); name.tabIndex = 0; name.title = "보드 목록으로";
+  name.classList.add("mb-badgehome");
+  name.addEventListener("click", go);
+  name.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
 }
 
 /** 수업 흐름 "앱 전체"로 들어온 학생: 선생님 보드 중 하나를 골라 들어가요(한 화면에 하나) */

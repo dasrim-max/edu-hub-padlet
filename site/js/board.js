@@ -56,8 +56,8 @@ export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInv
   applyLook(data.board);
   onTitle?.(data.board.title);
 
-  // ---- 교사 버튼(보드 제목 아래 한 줄: 보드 목록 · 글 찾기 · 확인 기다림 · 학생 초대 · 슬라이드쇼 · 보드 설정) ----
-  // 위쪽 가로 줄은 쓰지 않아요: 앱 이름표(쌤허브 공통)는 이름만, 보드 제목은 그 옆에 와요
+  // ---- 교사 버튼: 맨 위 한 줄 오른쪽(글 찾기 · 확인 기다림 · 학생 초대 · 슬라이드쇼 · 보드 설정), 제목은 그 아래 ----
+  // 왼쪽 위는 쌤허브 앱 이름표 자리. 이름표(모아보드)를 누르면 보드 목록으로 가요(main.js)
   const showSlides = () => {
     const list = ordered().filter((p) => p.status === "visible");
     if (!list.length) return toast("보여 줄 글이 아직 없어요");
@@ -327,20 +327,20 @@ export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInv
       h("input", { type: "search", class: "mb-search__input", placeholder: "글 찾기", "aria-label": "글 찾기", value: query,
         oninput: (e) => { query = e.target.value.trim().toLowerCase(); drawStage(); } }));
     fill(head,
-      h("div", { class: "mb-head__text" },
-        h("h1", { class: "mb-title", text: b.title }),   // 쌤허브 앱 이름표 바로 옆(이름표가 있을 때)
-        b.description && h("p", { class: "mb-desc", text: b.description }),
-        h("p", { class: "mb-meta" }, teacher ? `글 ${all.filter((p) => p.status === "visible").length}개` : `${me.name || ""} 학생으로 들어왔어요`,
-          !teacher && !b.allow_post && " · 지금은 보기만 할 수 있어요")),
       teacher && h("div", { class: "mb-head__tools" },
-        tool("grid", "보드 목록", "purple", null, { href: "./" }),
+        tool("grid", "보드 목록", "purple", null, { href: "./", class: "mb-tool mb-tool--purple mb-tool--home" }),   // 이름표가 있으면 숨김(이름표를 누르면 보드 목록)
         h("span", { class: "mb-head__sp" }),
         search,
         b.needs_approval || pendingN ? h("button", { class: "ss-pill mb-pill", type: "button", "aria-pressed": onlyPending ? "true" : "false",
           onclick: () => { onlyPending = !onlyPending; draw(); } }, `확인 기다림 ${pendingN}`) : null,
         h("button", { class: "ss-btn ss-btn--main mb-invite", type: "button", text: "학생 초대", onclick: () => onInvite?.(data.board) }),
         tool("play", "슬라이드쇼", "green", showSlides),
-        tool("sliders", "보드 설정", "orange", openSettings)));
+        tool("sliders", "보드 설정", "orange", openSettings)),
+      h("div", { class: "mb-head__text" },
+        h("h1", { class: "mb-title", text: b.title }),
+        b.description && h("p", { class: "mb-desc", text: b.description }),
+        h("p", { class: "mb-meta" }, teacher ? `글 ${all.filter((p) => p.status === "visible").length}개` : `${me.name || ""} 학생으로 들어왔어요`,
+          !teacher && !b.allow_post && " · 지금은 보기만 할 수 있어요")));
 
     const canWrite = teacher || b.allow_post;
     fab.replaceChildren(canWrite ? h("button", { class: teacher ? "mb-fab__btn" : "mb-fab__btn mb-fab__btn--stu", type: "button", onclick: () => compose({ sectionId: !teacher ? stuSection : null }) },
