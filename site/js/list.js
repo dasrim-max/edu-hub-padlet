@@ -1,6 +1,6 @@
 // 교사 첫 화면(보드 목록): 왼쪽 메뉴(최근 · 즐겨찾기 · 휴지통 · 폴더) + 오른쪽 카드 격자
 // 휴지통: 보드를 옮기면 학생은 못 들어와요. 30일이 지나면 목록을 열 때 영구 삭제해요.
-import { h, put, fill, icon, modal, confirmBox, errorBox, timeAgo, toast, LAYOUTS } from "./common.js";
+import { h, put, fill, icon, modal, confirmBox, errorBox, timeAgo, toast, LAYOUTS, APP_NAME, VERSION } from "./common.js";
 import { openBoardDialog } from "./dialogs.js";
 
 const TRASH_DAYS = 30;
@@ -16,7 +16,12 @@ export async function mountList({ root, api, bar, openNew = false, onOpen, userN
   const search = h("label", { class: "mb-search" }, icon("search"),
     h("input", { type: "search", class: "mb-search__input", placeholder: "보드 찾기", "aria-label": "보드 찾기",
       oninput: (e) => { query = e.target.value.trim().toLowerCase(); drawMain(); } }));
-  const side = h("aside", { class: "mb-side", "aria-label": "모아보드 메뉴" },
+  // 앱 이름 + 버전: 쌤허브가 띄운 앱 창은 위쪽 줄이 숨겨져 무슨 앱인지 안 보이므로 여기에 보여 줘요(위쪽 줄에 이름이 보이면 생략)
+  const barShowsName = !!document.querySelector("#bar .hub-app, #bar .ss-appbar:not([hidden]) .ss-appbar__name");
+  const brand = !barShowsName && h("div", { class: "mb-brand" },
+    h("span", { class: "mb-brand__name", text: APP_NAME }), h("span", { class: "ss-badge mb-ver", text: `v${VERSION}` }));
+  const side = h("aside", { class: "mb-side", "aria-label": "모아보드 메뉴" });
+  put(side, brand,
     h("div", { class: "mb-side__hello" }, h("b", { text: userName ? `${userName} 선생님` : "선생님" }), h("span", { text: "오늘은 어떤 생각을 모아 볼까요?" })),
     search, nav);
   const main = h("section", { class: "mb-main" });

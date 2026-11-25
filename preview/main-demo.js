@@ -11,7 +11,7 @@
 //   학생: const me = await initStudent({ appSlug: SLUG, contentId: c })  (자동 로그아웃 경고도 여기서 켜져요)
 //   api-demo.js 를 api-teacher.js / api-student.js 로 바꿔 끼워요.
 import * as api from "./api-demo.js";
-import { h, APP_NAME } from "../site/js/common.js";
+import { h, APP_NAME, addVersion } from "../site/js/common.js";
 import { mountList } from "../site/js/list.js";
 import { mountBoard } from "../site/js/board.js";
 
@@ -23,10 +23,12 @@ const DEMO_FIRST_BOARD = "00000000-0000-4000-8000-000000000001";
 /** 앱 자체 메뉴(쌤허브가 띄운 앱 창 모양: 앱 이름 + 앱 전용 버튼). 개발 시: hub.topbar 가 같은 일을 해요 */
 function appBar() {
   const btns = h("span", { class: "mb-appbar__btns" });
-  barHost.replaceChildren(h("header", { class: "ss-appbar" },
+  barHost.replaceChildren(h("header", { class: "ss-appbar", hidden: true },   // 실제와 같이: 앱 전용 버튼이 없으면 줄을 숨겨요
     h("span", { class: "ss-appbar__name", text: APP_NAME }), h("span", { class: "ss-appbar__sp" }), btns));
+  addVersion(barHost);
   return {
     addAction(label, fn) {
+      barHost.firstElementChild.hidden = false;
       const b = h("button", { class: "ss-appbtn" + (btns.children.length ? " ss-appbtn--sub" : ""), type: "button", text: label, onclick: fn });
       btns.append(b); return b;
     },

@@ -8,6 +8,13 @@ export const fill = (el, ...kids) => el.replaceChildren(...only(kids));
 
 export const SLUG = "moaboard";
 export const APP_NAME = "모아보드";
+export const VERSION = "1.0";   // 선생님이 정할 때만 올려요
+
+/** 상단 바의 앱 이름 옆에 버전 배지(다른 쌤허브 앱과 같은 모양) */
+export function addVersion(bar) {
+  const name = bar?.querySelector(".hub-app, .ss-appbar__name");
+  if (name && !bar.querySelector(".mb-ver")) name.after(h("span", { class: "ss-badge mb-ver", text: `v${VERSION}` }));
+}
 
 export const LAYOUTS = [
   ["wall", "담벼락", "글이 빈 곳부터 차곡차곡 붙어요"],
