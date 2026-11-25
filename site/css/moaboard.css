@@ -13,9 +13,22 @@
 .mb-card__sp { flex: 1; }
 
 /* ---- 머리(제목·안내·찾기) ---- */
-.mb-head { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 20px; }
-.mb-head__text { flex: 1 1 320px; display: grid; gap: 4px; min-width: 0; }
+/* 제목(쌤허브 앱 이름표 옆) → 설명·글 수 → 버튼 한 줄(왼쪽 보드 목록, 오른쪽 글 찾기·확인 기다림·학생 초대·슬라이드쇼·보드 설정) */
+.mb-head { display: grid; gap: 12px; }
+.mb-head__text { display: grid; gap: 4px; min-width: 0; }
 .mb-head__tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.mb-head__sp { flex: 1; }
+.mb-head__tools .mb-search { flex: 0 1 240px; min-width: 160px; }
+.mb-invite { min-height: 36px; padding-block: 0; }
+/* 동그란 색 아이콘 버튼: 보드 목록(보라)·슬라이드쇼(초록)·보드 설정(주황) */
+.mb-tool { display: inline-grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; cursor: pointer; flex: none;
+  box-shadow: var(--ap-shadow); text-decoration: none; transition: transform .12s ease; }
+.mb-tool .mb-ico { width: 18px; height: 18px; }
+.mb-tool:hover { transform: translateY(-1px); }
+.mb-tool:focus-visible { outline: 3px solid var(--ap-accent); outline-offset: 2px; }
+.mb-tool--purple { background: var(--ap-purple-tint); color: var(--ap-purple); }
+.mb-tool--green { background: var(--ap-green-tint); color: var(--ap-green); }
+.mb-tool--orange { background: var(--ap-orange-tint); color: var(--ap-orange); }
 .mb-back { justify-self: start; color: inherit; opacity: .85; font-size: 14px; text-decoration: none; }
 .mb-back:hover { text-decoration: underline; }
 .mb-title { font: 400 30px/1.2 var(--as-fh, var(--ss-font-display)); overflow-wrap: anywhere; }
@@ -160,7 +173,10 @@
 /* 쌤허브 앱 이름표(왼쪽 위에 떠 있음) 자리 비워 두기: 이름표가 뜬 화면에서만. 앱 이름은 이름표가 보여 주니 숨겨요 */
 html[data-ss-appbadge] .mb-brand { display: none; }
 html[data-ss-appbadge] .mb-side { padding-top: var(--ss-appbadge-h, 22px); }
-html[data-ss-appbadge] .mb-app:not(.mb-app--list) { padding-top: var(--ss-appbadge-h, 18px); }
+/* 보드 화면: 위쪽을 비우지 않고 제목을 이름표 바로 옆(같은 높이)에 둬요 */
+html[data-ss-appbadge] .mb-app:not(.mb-app--list) { padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
+html[data-ss-appbadge] .mb-app:not(.mb-app--list) .mb-title { min-height: 36px; display: flex; align-items: center;
+  padding-left: max(0px, calc(var(--ss-appbadge-w, 0px) - max(16px, env(safe-area-inset-left, 0px)))); }
 
 .mb-main { display: grid; gap: 18px; align-content: start; padding: 26px max(16px, 2vw) 60px; min-width: 0; }
 .mb-main__head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
@@ -319,8 +335,10 @@ html[data-ss-appbadge] .mb-app:not(.mb-app--list) { padding-top: var(--ss-appbad
 @media (max-width: 720px) {
   .mb-app { padding-top: 14px; gap: 12px; }
   .mb-title { font-size: 24px; }
-  .mb-head__tools, .mb-search { width: 100%; }
-  .mb-head__tools .mb-search { flex: 1; min-width: 0; }
+  .mb-head__sp { display: none; }
+  /* 휴대폰: 윗줄 보드 목록·학생 초대·슬라이드쇼·보드 설정·글 찾기, 확인 기다림은 다음 줄 오른쪽 */
+  .mb-head__tools .mb-search { flex: 1 1 110px; min-width: 0; order: 4; }
+  .mb-head__tools .mb-pill { order: 5; margin-left: auto; }
   .mb-col { width: min(84vw, 320px); }
   .mb-wall { columns: 2 150px; }
   .mb-btnlabel { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }

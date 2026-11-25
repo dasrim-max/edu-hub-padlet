@@ -60,6 +60,8 @@ export function checkFile(file, kind, { beforeShrink = kind === "image" } = {}) 
 const NS = "http://www.w3.org/2000/svg";
 const PATHS = {
   plus: "M8 3v10M3 8h10",
+  sliders: "M2.5 4h6M11.5 4h2M2.5 8h2M7.5 8h6M2.5 12h7M12.5 12h1M10 2.5v3M6 6.5v3M11 10.5v3",
+  grid: "M2.5 2.5h4.5v4.5H2.5zM9 2.5h4.5v4.5H9zM2.5 9h4.5v4.5H2.5zM9 9h4.5v4.5H9z",
   star: "M8 2l1.8 3.8 4.2.5-3.1 2.9.8 4.1L8 11.3l-3.7 2 .8-4.1L2 6.3l4.2-.5z",
   folder: "M2 4.5v8h12V6H8L6.5 4.5z",
   trash: "M3 4.5h10M6 4.5V3h4v1.5M4.5 4.5l.7 9h5.6l.7-9",
