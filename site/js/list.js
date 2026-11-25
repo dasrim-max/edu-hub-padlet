@@ -16,8 +16,8 @@ export async function mountList({ root, api, bar, openNew = false, onOpen, userN
   const search = h("label", { class: "mb-search" }, icon("search"),
     h("input", { type: "search", class: "mb-search__input", placeholder: "보드 찾기", "aria-label": "보드 찾기",
       oninput: (e) => { query = e.target.value.trim().toLowerCase(); drawMain(); } }));
-  // 앱 이름 + 버전: 쌤허브가 띄운 앱 창은 위쪽 줄이 숨겨져 무슨 앱인지 안 보이므로 여기에 보여 줘요(위쪽 줄에 이름이 보이면 생략)
-  const barShowsName = !!document.querySelector("#bar .hub-app, #bar .ss-appbar:not([hidden]) .ss-appbar__name");
+  // 앱 이름 + 버전: 쌤허브 앱 이름표나 위쪽 줄에 이름이 없을 때만(예전 포털). 이름표가 뜬 화면에서는 CSS 가 숨겨요(html[data-ss-appbadge])
+  const barShowsName = !!document.querySelector(".ss-appbadge, #bar .hub-app, #bar .ss-appbar:not([hidden]) .ss-appbar__name");
   const brand = !barShowsName && h("div", { class: "mb-brand" },
     h("span", { class: "mb-brand__name", text: APP_NAME }), h("span", { class: "ss-badge mb-ver", text: `v${VERSION}` }));
   const side = h("aside", { class: "mb-side", "aria-label": "모아보드 메뉴" });
