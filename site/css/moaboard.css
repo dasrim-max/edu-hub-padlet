@@ -178,10 +178,10 @@ html[data-ss-appbadge] .mb-tool--home { display: none; }
 html[data-ss-appbadge] .mb-brand { display: none; }
 html[data-ss-appbadge] .mb-side { padding-top: var(--ss-appbadge-h, 22px); }
 /* 보드 화면: 버튼 줄이 이름표와 같은 높이(맨 위). 학생 화면처럼 버튼 줄이 없으면 이름표 아래로 */
-/* 이름표(글씨, 위에서 10px·높이 24px)와 버튼 줄(36px)의 가운데를 맞춰요 */
-html[data-ss-appbadge] .mb-app:not(.mb-app--list) { padding-top: calc(4px + env(safe-area-inset-top, 0px)); }
-html[data-ss-appbadge] .mb-app:not(.mb-app--list) .mb-head:not(:has(.mb-head__tools)) { padding-top: calc(var(--ss-appbadge-h, 0px) - 4px); }
-/* 이름표 글씨는 보드 배경(꾸미기)에 맞춰 읽히는 색으로(사진 배경의 그림자는 moaboard-style.css) */
+/* 이름표(위에서 10px, 아래 끝 = --ss-appbadge-h - 8px)와 버튼 줄(36px)의 가운데를 맞춰요: 위 여백 = h/2 - 17px */
+html[data-ss-appbadge] .mb-app:not(.mb-app--list) { padding-top: calc(max(0px, var(--ss-appbadge-h, 42px) / 2 - 17px) + env(safe-area-inset-top, 0px)); }
+html[data-ss-appbadge] .mb-app:not(.mb-app--list) .mb-head:not(:has(.mb-head__tools)) { padding-top: calc(var(--ss-appbadge-h, 42px) / 2 + 17px); }
+/* 이름표 글씨는 보드 배경(꾸미기)에 맞춰 읽히는 색으로(사진 위 그림자는 포털 이름표가 앱 바탕색으로 넣어요) */
 html[data-ss-appbadge][data-mb-bg] .ss-appbadge { color: var(--mb-page-ink, var(--as-ink)); }
 
 .mb-main { display: grid; gap: 18px; align-content: start; padding: 26px max(16px, 2vw) 60px; min-width: 0; }

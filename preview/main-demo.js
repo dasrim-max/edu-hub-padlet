@@ -23,7 +23,7 @@ const DEMO_FIRST_BOARD = "00000000-0000-4000-8000-000000000001";
 /** 쌤허브가 띄운 앱 창처럼: 왼쪽 위 앱 이름표(이름 + 버전, 앱 버튼은 이름표 오른쪽). 개발 시: initHub({ appVersion }) 가 같은 일을 해요 */
 const badgeMod = await import("/shared/appbadge.js").catch(() => null);   // 포털에 이름표가 아직 없으면 예전 줄
 function appBar() {
-  if (badgeMod) { barHost.replaceChildren(); return badgeMod.mountAppBadge({ name: APP_NAME, version: VERSION }); }
+  if (badgeMod) { barHost.replaceChildren(); return badgeMod.mountAppBadge({ name: APP_NAME, version: VERSION, home: "./" }); }
   const btns = h("span", { class: "mb-appbar__btns" });
   barHost.replaceChildren(h("header", { class: "ss-appbar" },
     h("span", { class: "ss-appbar__name", text: APP_NAME }), h("span", { class: "ss-badge mb-ver", text: `v${VERSION}` }), h("span", { class: "ss-appbar__sp" }), btns));

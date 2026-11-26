@@ -47,8 +47,6 @@
 :root[data-mb-bg="gradient-mono"], [data-bg="gradient-mono"] { --as-bg: #1f2937; --as-pat: linear-gradient(135deg, #1f2937, #4b5563); --as-patsz: auto; --as-patpos: 0 0; --mb-page-ink: #f5f5f7; --mb-tone: dark; }
 /* 배경 사진: 사진 위에 살짝 어둡게 덮고 바탕 글자는 밝게 */
 :root[data-mb-bg="photo"] { --as-bg: #1d1d1f; --as-pat: none; --mb-page-ink: #f5f5f7; }
-/* 사진 배경 위 쌤허브 앱 이름표 글씨가 읽히게 */
-:root[data-mb-bg="photo"][data-ss-appbadge] .ss-appbadge { text-shadow: 0 1px 4px rgba(0, 0, 0, .45); }
 :root[data-mb-card="white"], [data-card="white"] { --mb-card-bg: #ffffff; --mb-card-ink: #1d1d1f; }
 :root[data-mb-card="yellow"], [data-card="yellow"] { --mb-card-bg: #fef9c3; --mb-card-ink: #1d1d1f; }
 :root[data-mb-card="mint"], [data-card="mint"] { --mb-card-bg: #f0fdf4; --mb-card-ink: #1d1d1f; }
