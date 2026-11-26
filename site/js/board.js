@@ -328,14 +328,14 @@ export async function mountBoard({ root, api, boardId, role, me = {}, bar, onInv
         oninput: (e) => { query = e.target.value.trim().toLowerCase(); drawStage(); } }));
     fill(head,
       teacher && h("div", { class: "mb-head__tools" },
-        tool("grid", "보드 목록", "purple", null, { href: "./", class: "mb-tool mb-tool--purple mb-tool--home" }),   // 이름표가 있으면 숨김(이름표를 누르면 보드 목록)
+        tool("grid", "보드 목록", "plain", null, { href: "./", class: "mb-tool mb-tool--home" }),   // 이름표가 있으면 숨김(이름표를 누르면 보드 목록)
         h("span", { class: "mb-head__sp" }),
         search,
         b.needs_approval || pendingN ? h("button", { class: "ss-pill mb-pill", type: "button", "aria-pressed": onlyPending ? "true" : "false",
           onclick: () => { onlyPending = !onlyPending; draw(); } }, `확인 기다림 ${pendingN}`) : null,
         h("button", { class: "ss-btn ss-btn--main mb-invite", type: "button", text: "학생 초대", onclick: () => onInvite?.(data.board) }),
-        tool("play", "슬라이드쇼", "green", showSlides),
-        tool("sliders", "보드 설정", "orange", openSettings)),
+        tool("play", "슬라이드쇼", "plain", showSlides),
+        tool("sliders", "보드 설정", "plain", openSettings)),
       h("div", { class: "mb-head__text" },
         h("h1", { class: "mb-title", text: b.title }),
         b.description && h("p", { class: "mb-desc", text: b.description }),
