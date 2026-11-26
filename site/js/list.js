@@ -1,6 +1,6 @@
 // 교사 첫 화면(보드 목록): 왼쪽 메뉴(최근 · 즐겨찾기 · 휴지통 · 폴더) + 오른쪽 카드 격자
 // 휴지통: 보드를 옮기면 학생은 못 들어와요. 30일이 지나면 목록을 열 때 영구 삭제해요.
-import { h, put, fill, icon, modal, confirmBox, errorBox, timeAgo, toast, LAYOUTS, APP_NAME, VERSION } from "./common.js";
+import { h, put, fill, icon, modal, confirmBox, errorBox, timeAgo, toast, LAYOUTS } from "./common.js";
 import { openBoardDialog } from "./dialogs.js";
 
 const TRASH_DAYS = 30;
@@ -16,12 +16,9 @@ export async function mountList({ root, api, bar, openNew = false, onOpen, userN
   const search = h("label", { class: "mb-search" }, icon("search"),
     h("input", { type: "search", class: "mb-search__input", placeholder: "보드 찾기", "aria-label": "보드 찾기",
       oninput: (e) => { query = e.target.value.trim().toLowerCase(); drawMain(); } }));
-  // 앱 이름 + 버전: 쌤허브 앱 이름표나 위쪽 줄에 이름이 없을 때만(예전 포털). 이름표가 뜬 화면에서는 CSS 가 숨겨요(html[data-ss-appbadge])
-  const barShowsName = !!document.querySelector(".ss-appbadge, #bar .hub-app, #bar .ss-appbar:not([hidden]) .ss-appbar__name");
-  const brand = !barShowsName && h("div", { class: "mb-brand" },
-    h("span", { class: "mb-brand__name", text: APP_NAME }), h("span", { class: "ss-badge mb-ver", text: `v${VERSION}` }));
+  // 앱 이름은 넣지 않아요: 쌤허브 앱 이름표(왼쪽 위) 또는 쌤허브 위쪽 줄이 보여 줘요
   const side = h("aside", { class: "mb-side", "aria-label": "모아보드 메뉴" });
-  put(side, brand,
+  put(side,
     h("div", { class: "mb-side__hello" }, h("b", { text: userName ? `${userName} 선생님` : "선생님" }), h("span", { text: "오늘은 어떤 생각을 모아 볼까요?" })),
     search, nav);
   const main = h("section", { class: "mb-main" });
