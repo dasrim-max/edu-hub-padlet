@@ -22,12 +22,16 @@ html[data-ss-appbadge] .mb-head__tools::before { content: ""; flex: 0 0 max(0px,
 html[data-ss-appbadge] .mb-tool--home { display: none; }
 .mb-badgehome { cursor: pointer; }
 .mb-badgehome:hover { text-decoration: underline; }
-.mb-head__tools .mb-search { flex: 0 1 240px; min-width: 160px; }
-.mb-invite { min-height: 36px; padding-block: 0; }
+/* 위쪽 메뉴 글자는 모든 쌤허브 앱이 같아요: --ss-appbadge-size(20px, 휴대폰 16px). 앱에서 값을 바꾸지 않아요 */
+.mb-app { --mb-menu: var(--ss-appbadge-size, 20px); --mb-menu-h: max(36px, calc(var(--mb-menu) * 1.8)); }
+.mb-head__tools { font-size: var(--mb-menu); }
+.mb-head__tools .mb-search { flex: 0 1 280px; min-width: 180px; height: var(--mb-menu-h); }
+.mb-head__tools .mb-search__input { font-size: var(--mb-menu); }
+.mb-head__tools :is(.mb-pill, .mb-invite) { min-height: var(--mb-menu-h); padding-block: 0; font-size: var(--mb-menu); }
 /* 동그란 아이콘 버튼(보드 목록·슬라이드쇼·보드 설정): 옆의 "확인 기다림"과 같은 흰 바탕·기본 글자색 */
-.mb-tool { display: inline-grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; cursor: pointer; flex: none;
+.mb-tool { display: inline-grid; place-items: center; width: var(--mb-menu-h, 36px); height: var(--mb-menu-h, 36px); padding: 0; border: 0; border-radius: 50%; cursor: pointer; flex: none;
   background: var(--ap-card); color: var(--ap-text); box-shadow: var(--ap-shadow); text-decoration: none; transition: transform .12s ease; }
-.mb-tool .mb-ico { width: 18px; height: 18px; }
+.mb-tool .mb-ico { width: calc(var(--mb-menu, 20px) * .95); height: calc(var(--mb-menu, 20px) * .95); }
 .mb-tool:hover { transform: translateY(-1px); }
 .mb-tool:focus-visible { outline: 3px solid var(--ap-accent); outline-offset: 2px; }
 .mb-back { justify-self: start; color: inherit; opacity: .85; font-size: 14px; text-decoration: none; }
@@ -155,8 +159,6 @@ html[data-ss-appbadge] .mb-tool--home { display: none; }
 .mb-app--list { padding: 0; gap: 0; }
 .mb-shell { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: calc(100dvh - 52px); }
 .mb-side { display: flex; flex-direction: column; gap: 14px; padding: 22px 14px; background: var(--ap-card); border-right: 1px solid var(--ap-sep); color: var(--ap-text); }
-.mb-brand { display: flex; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--ap-sep); }
-.mb-brand__name { font-size: 20px; font-weight: 800; }
 .mb-side__hello b { display: block; font-size: 18px; }
 .mb-side__hello span { color: var(--ap-text-2); font-size: 13px; }
 .mb-side .mb-search { width: 100%; min-width: 0; background: var(--ap-fill); border: 0; color: var(--ap-text); }
@@ -170,14 +172,12 @@ html[data-ss-appbadge] .mb-tool--home { display: none; }
 .mb-nav__go small { color: var(--ap-text-2); font-size: 12px; font-weight: 400; }
 .mb-nav__item .mb-iconbtn { width: 28px; height: 28px; opacity: .6; }
 .mb-nav__add { color: var(--ap-text-2); }
-.mb-ver { margin-left: 8px; font-size: 13px; padding: 2px 8px; vertical-align: middle; }
-/* 쌤허브 앱 이름표(왼쪽 위에 떠 있음) 자리 비워 두기: 이름표가 뜬 화면에서만. 앱 이름은 이름표가 보여 주니 숨겨요 */
-html[data-ss-appbadge] .mb-brand { display: none; }
+/* 쌤허브 앱 이름표(왼쪽 위에 떠 있음) 자리 비워 두기: 이름표가 뜬 화면에서만(theme.js 가 처음부터 data-ss-appbadge 를 붙여요) */
 html[data-ss-appbadge] .mb-side { padding-top: var(--ss-appbadge-h, 22px); }
 /* 보드 화면: 버튼 줄이 이름표와 같은 높이(맨 위). 학생 화면처럼 버튼 줄이 없으면 이름표 아래로 */
-/* 이름표(위에서 10px, 아래 끝 = --ss-appbadge-h - 8px)와 버튼 줄(36px)의 가운데를 맞춰요: 위 여백 = h/2 - 17px */
-html[data-ss-appbadge] .mb-app:not(.mb-app--list) { padding-top: calc(max(0px, var(--ss-appbadge-h, 42px) / 2 - 17px) + env(safe-area-inset-top, 0px)); }
-html[data-ss-appbadge] .mb-app:not(.mb-app--list) .mb-head:not(:has(.mb-head__tools)) { padding-top: calc(var(--ss-appbadge-h, 42px) / 2 + 17px); }
+/* 이름표 가운데(위 10px + 글자 0.9배)와 버튼 줄(높이 --mb-menu-h) 가운데를 맞춰요 */
+html[data-ss-appbadge] .mb-app:not(.mb-app--list) { padding-top: calc(max(0px, 10px + var(--mb-menu) * .9 - var(--mb-menu-h) / 2) + env(safe-area-inset-top, 0px)); }
+html[data-ss-appbadge] .mb-app:not(.mb-app--list) .mb-head:not(:has(.mb-head__tools)) { padding-top: calc(var(--ss-appbadge-h, 50px) - 10px); }
 /* 이름표 글씨는 보드 배경(꾸미기)에 맞춰 읽히는 색으로(사진 위 그림자는 포털 이름표가 앱 바탕색으로 넣어요) */
 html[data-ss-appbadge][data-mb-bg] .ss-appbadge { color: var(--mb-page-ink, var(--as-ink)); }
 
@@ -336,7 +336,7 @@ html[data-ss-appbadge][data-mb-bg] .ss-appbadge { color: var(--mb-page-ink, var(
 
 /* ---- 휴대폰 ---- */
 @media (max-width: 720px) {
-  .mb-app { padding-top: 14px; gap: 12px; }
+  .mb-app { padding-top: 14px; gap: 12px; --mb-menu: min(var(--ss-appbadge-size, 20px), 16px); }
   .mb-title { font-size: 24px; }
   .mb-head__sp { display: none; }
   /* 휴대폰: 이름표 옆에 학생 초대·슬라이드쇼·보드 설정, 다음 줄에 확인 기다림·글 찾기 */
